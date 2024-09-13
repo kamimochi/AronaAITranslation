@@ -1,0 +1,22 @@
+{
+    "manifest_version": 3,
+    "name": "Text Translator",
+    "version": "1.0",
+    "description": "Translates text on the page to another language.",
+    "permissions": [
+      "activeTab"
+    ],
+    "content_scripts": [
+      {
+        "matches": ["https://arona.ai/*"],
+        "js": ["content.js"]
+      }
+    ],
+    "web_accessible_resources": [
+      {
+        "resources": ["dictionary.json"],
+        "matches": ["https://arona.ai/*"]
+      }
+    ]
+  }
+  
