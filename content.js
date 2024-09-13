@@ -15,16 +15,26 @@ fetch(chrome.runtime.getURL('dictionary.json'))
 function translateText(originalText) {
   let translatedText = originalText;
 
-  // 遍历字典，替换匹配的韩文单词
+  // 遍历字典，替换匹配的韩文单字
   for (let [koreanWord, chineseWord] of Object.entries(dictionary)) {
-    // 使用正则表达式全局替换单词，并去除空格进行匹配
-    const regex = new RegExp(koreanWord.trim(), 'gi');
+    let regex;
+
+    // 檢查是否是單字並且需要處理數字邊界
+    if (koreanWord.includes("(單字)")) {
+      const cleanKoreanWord = koreanWord.replace("(單字)", "").trim();
+      // 匹配左右任意一边是数字的情况，或单独的字
+      regex = new RegExp(`(?<=\\d)${cleanKoreanWord}|${cleanKoreanWord}(?=\\d)`, 'g');
+    } else {
+      // 正常替换其他单词
+      regex = new RegExp(koreanWord.trim(), 'gi');
+    }
+
+    // 进行替换
     translatedText = translatedText.replace(regex, chineseWord);
   }
 
   return translatedText;
 }
-
 // 翻译整个页面内容
 function translatePage() {
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
