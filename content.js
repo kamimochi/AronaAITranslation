@@ -1,5 +1,6 @@
 // 词汇映射表，初始为空，将从 JSON 文件中加载
 let dictionary = {};
+let isTranslating = false;
 
 // 使用 fetch 加载 dictionary.json 文件
 fetch(chrome.runtime.getURL('dictionary.json'))
@@ -19,7 +20,7 @@ function translateText(originalText) {
   for (let [koreanWord, chineseWord] of Object.entries(dictionary)) {
     let regex;
 
-    // 檢查是否是單字並且需要處理數字邊界
+    // 檢查是否是單字并且需要处理数字边界
     if (koreanWord.includes("(單字)")) {
       const cleanKoreanWord = koreanWord.replace("(單字)", "").trim();
       // 匹配左右任意一边是数字的情况，或单独的字
@@ -35,32 +36,64 @@ function translateText(originalText) {
 
   return translatedText;
 }
-// 翻译整个页面内容
-function translatePage() {
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-  let node;
 
-  // 遍历页面上的所有文本节点并翻译
-  while (node = walker.nextNode()) {
+// 分批翻译函数，处理少量节点
+function translateBatch(nodes) {
+  nodes.forEach(node => {
     node.textContent = translateText(node.textContent);
-  }
+  });
 }
 
-// 监听双击事件，获取选中的文本并进行翻译
-document.body.addEventListener('dblclick', () => {
-  const selectedText = window.getSelection().toString();
-  if (selectedText) {
-    const translated = translateText(selectedText); // 进行翻译
-    alert("翻译后的文字: " + translated); // 弹出翻译结果
+// 翻译整个页面内容，使用分批翻译
+function translatePage() {
+  if (isTranslating) return; // 防止重复调用
+  isTranslating = true;
+
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+  const nodes = [];
+  let node;
+
+  // 遍历页面上的所有文本节点并存储
+  while (node = walker.nextNode()) {
+    nodes.push(node);
   }
-});
+
+  const batchSize = 50; // 每次翻译的节点数量
+  let index = 0;
+
+  function processBatch() {
+    if (index < nodes.length) {
+      const batch = nodes.slice(index, index + batchSize);
+      translateBatch(batch);
+      index += batchSize;
+      requestAnimationFrame(processBatch); // 使用 requestAnimationFrame 分帧处理，防止页面卡顿
+    } else {
+      isTranslating = false; // 翻译完成
+    }
+  }
+
+  processBatch();
+}
+
+
+
+// 使用节流优化的 MutationObserver，限制频率
+let observerThrottle;
+const throttledObserver = () => {
+  if (!observerThrottle) {
+    observerThrottle = setTimeout(() => {
+      translatePage();
+      observerThrottle = null;
+    }, 500); // 节流 500ms
+  }
+};
 
 // 使用 MutationObserver 监听页面内容的变化（如动态加载的内容）
 const observer = new MutationObserver((mutationsList) => {
   for (let mutation of mutationsList) {
     if (mutation.type === 'childList') {
       // 当 DOM 变化时，重新翻译页面
-      translatePage();
+      throttledObserver();
     }
   }
 });
