@@ -10,20 +10,35 @@ Promise.all([
   fetch(chrome.runtime.getURL('students_mapping.json')).then(response => response.json()),
   fetch(chrome.runtime.getURL('Event.json')).then(response => response.json()),  // 加载 Event.json
   fetch(chrome.runtime.getURL('Club.json')).then(response => response.json()),  // 加载 Club.json
-  fetch(chrome.runtime.getURL('School.json')).then(response => response.json())  // 加载 school.json
+  fetch(chrome.runtime.getURL('School.json')).then(response => response.json()),  // 加载 school.json
+  fetch(chrome.runtime.getURL('CharacterSSRNew.json')).then(response => response.json()), // 加载 CharacterSSRNew.json
+  fetch(chrome.runtime.getURL('FamilyName_mapping.json')).then(response => response.json()), // 加载 FamilyName_mapping.json
+  fetch(chrome.runtime.getURL('Hobby_mapping.json')).then(response => response.json()), // 加载 Hobby_mapping.json
+  fetch(chrome.runtime.getURL('skill_name_mapping.json')).then(response => response.json()),
+  fetch(chrome.runtime.getURL('skill_Desc_mapping.json')).then(response => response.json())
   
 ])
-  .then(([dictionaryData, studentMappingData, eventMappingData , ClubMappingData , SchoolMappingData]) => {
-    dictionary = { ...dictionaryData, ...eventMappingData , ...ClubMappingData , ...SchoolMappingData}; // 将加载到的字典数据存储到全局变量
-    studentMapping = studentMappingData; // 将学生映射表存储到全局变量
+  .then(([dictionaryData, studentMappingData, eventMappingData , ClubMappingData , SchoolMappingData , CharacterSSRNewData ,  FamilyName_mappingData , Hobby_mappingData , skill_name_mappingData , skill_Desc_mappingData]) => {
+    dictionary = { ...dictionaryData, ...eventMappingData , ...ClubMappingData , ...SchoolMappingData }; // 将加载到的字典数据存储到全局变量
+    studentMapping = { ...studentMappingData , ...FamilyName_mappingData , ...CharacterSSRNewData , ...Hobby_mappingData , ...skill_name_mappingData, ...skill_Desc_mappingData }; // 将学生映射表存储到全局变量
     eventMapping = eventMappingData;  // 将事件映射表存储到全局变量
     ClubMapping = ClubMappingData;  // 将社团映射表存储到全局变量
     SchoolMapping = SchoolMappingData;  // 将社团映射表存储到全局变量
+    CharacterSSRNew = CharacterSSRNewData;  // 将社团映射表存储到全局变量
+    FamilyName_mapping = FamilyName_mappingData;  // 将社团映射表存储到全局变量
+    Hobby_mapping = Hobby_mappingData;  // 将社团映射表存储到全局变量
+    skill_name_mapping = skill_name_mappingData;  // 将社团映射表存储到全局变量 
+    skill_Desc_mapping = skill_Desc_mappingData;   
     console.log('词汇映射表已加载:', dictionary);
     console.log('学生映射表已加载:', studentMapping);
     console.log('事件映射表已加载:', eventMapping);  // 打印 Event.json 数据
     console.log('社团映射表已加载:', ClubMapping);  // 打印 Club.json 数据
     console.log('学校映射表已加载:', SchoolMapping);  // 打印 School.json 数据
+    console.log('角色映射表已加载:', CharacterSSRNew);  // 打印 CharacterSSRNew.json 数据
+    console.log('家族名字映射表已加载:', FamilyName_mapping);  // 打印 FamilyName_mapping.json 数据
+    console.log('爱好映射表已加载:', Hobby_mapping);  // 打印 Hobby_mapping.json 数据
+    console.log('技能名字映射表已加载:', skill_name_mapping);  // 打印 skill_name_mapping.json 数据
+    console.log('技能描述映射表已加载:', skill_Desc_mapping);  // 打印 skill_Desc_mapping.json 数据
     translatePage(); // 页面加载后立即翻译一次
   })
   .catch(error => console.error('加载词汇映射表或学生映射表时出错:', error));
