@@ -18,12 +18,15 @@ tw_data = tw_response.json()
 kr_data = kr_response.json()
 
 # Extract the EventName mappings from both JSON files
-tw_event_names = tw_data.get("EventName", {})
-kr_event_names = kr_data.get("EventName", {})
+tw_School_names = tw_data.get("School", {})
+kr_School_names = kr_data.get("School", {})
 
 # Generate the mapping between Korean and Traditional Chinese event names
-event_name_mapping = {kr_event_names[key]: tw_event_names[key] for key in kr_event_names if key in tw_event_names}
+event_name_mapping = {kr_School_names[key]: tw_School_names[key] for key in kr_School_names if key in tw_School_names}
 
-# Output the result
-for kr_name, tw_name in event_name_mapping.items():
-    print(f'"{kr_name}" : "{tw_name}"')
+# Output the result to a JSON file
+output_file = 'School.json'
+with open(output_file, 'w', encoding='utf-8') as outfile:
+    json.dump(event_name_mapping, outfile, ensure_ascii=False, indent=4)
+
+print(f"Event name mapping saved to {output_file}")

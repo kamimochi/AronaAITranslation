@@ -16,6 +16,22 @@
       {
         "resources": ["dictionary.json"],
         "matches": ["https://arona.ai/*"]
+      },
+      {
+        "resources": ["students_mapping.json"],
+        "matches": ["https://arona.ai/*"]
+      },
+      {
+        "resources": ["Event.json"],
+        "matches": ["https://arona.ai/*"]
+      },
+      {
+        "resources": ["Club.json"],
+        "matches": ["https://arona.ai/*"]
+      },
+      {
+        "resources": ["School.json"],
+        "matches": ["https://arona.ai/*"]
       }
     ]
   }
