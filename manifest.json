@@ -1,62 +1,37 @@
 {
-    "manifest_version": 3,
-    "name": "Text Translator",
-    "version": "1.0",
-    "description": "Translates text on the page to another language.",
-    "permissions": [
-      "activeTab"
-    ],
-    "content_scripts": [
-      {
-        "matches": ["https://arona.ai/*"],
-        "js": ["content.js"]
-      }
-    ],
-    "web_accessible_resources": [
-      {
-        "resources": ["dictionary.json"],
-        "matches": ["https://arona.ai/*"]
-      },
-      {
-        "resources": ["students_mapping.json"],
-        "matches": ["https://arona.ai/*"]
-      },
-      {
-        "resources": ["Event.json"],
-        "matches": ["https://arona.ai/*"]
-      },
-      {
-        "resources": ["Club.json"],
-        "matches": ["https://arona.ai/*"]
-      },
-      {
-        "resources": ["School.json"],
-        "matches": ["https://arona.ai/*"]
-      },
-      {
-        "resources": ["CharacterSSRNew.json"],
-        "matches": ["https://arona.ai/*"]
-      },
-      {
-        "resources": ["otherstu.json"],
-        "matches": ["https://arona.ai/*"]
-      },
-      {
-        "resources": ["FamilyName_mapping.json"],
-        "matches": ["https://arona.ai/*"]
-      },
-      {
-        "resources": ["Hobby_mapping.json"],
-        "matches": ["https://arona.ai/*"]
-      },
-      {
-        "resources": ["skill_name_mapping.json"],
-        "matches": ["https://arona.ai/*"]
-      },
-      {
-        "resources": ["skill_Desc_mapping.json"],
-        "matches": ["https://arona.ai/*"]
-      }
-    ]
-  }
-  
+  "manifest_version": 3,
+  "name": "Text Translator",
+  "version": "1.0",
+  "description": "Translates text on the page to another language.",
+  "permissions": [
+    "activeTab"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://arona.ai/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "dictionary.json",
+        "students_mapping.json",
+        "Event.json",
+        "Club.json",
+        "School.json",
+        "CharacterSSRNew.json",
+        "otherstu.json",
+        "FamilyName_mapping.json",
+        "Hobby_mapping.json",
+        "skill_name_mapping.json",
+        "skill_Desc_mapping.json",
+        "furniture_name_mapping.json",
+        "furniture_Desc_mapping.json",
+        "item_name_mapping.json",
+        "item_Desc_mapping.json"
+      ],
+      "matches": ["https://arona.ai/*"]
+    }
+  ]
+}
