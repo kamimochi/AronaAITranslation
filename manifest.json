@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Text Translator",
-  "version": "1.0",
-  "description": "Translates text on the page to another language.",
+  "name": "Arona.ai Translator(中文化)",
+  "version": "0.0.1",
+  "description": "把Arona.ai翻譯成中文",
   "permissions": [
     "activeTab",
     "storage"
@@ -13,7 +13,8 @@
   "content_scripts": [
     {
       "matches": ["https://arona.ai/*"],
-      "js": ["content.js"]
+      "js": ["content.js"],
+      "css": ["styles.css"]
     }
   ],
   "web_accessible_resources": [
@@ -37,7 +38,10 @@
         "equipment_Desc_mapping.json",
         "equipment_name_mapping.json",
         "stages_name_mapping.json",
-        "stages_Event_mapping.json"
+        "stages_Event_mapping.json",
+        "fonts/PerfectDOSVGA437.ttf",
+        "fonts/U-OTF-ShinMGoUpr-DeBold.otf",
+        "fonts/U-OTF-ShinMGoUpr-Medium.otf"
       ],
       "matches": ["https://arona.ai/*"]
     }

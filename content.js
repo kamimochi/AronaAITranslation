@@ -5,6 +5,13 @@ let isTranslating = false;
 let translationEnabled = false;
 let jsonLoaded = false;
 
+function applyCustomFontToTranslatedText() {
+    const translatedElements = document.querySelectorAll('.translated-text'); // 选择翻译后的文本元素
+    translatedElements.forEach(element => {
+        element.style.fontFamily = "'ShinMGoUprMedium', sans-serif";  // 将字体应用到翻译的文本
+    });
+}
+
 // 监听 popup.js 发送的启用/禁用消息
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 	if (request.action === 'enableTranslation') {
@@ -276,4 +283,5 @@ observer.observe(document.body, {
 // 当页面加载完成时自动翻译一次
 document.addEventListener('DOMContentLoaded', () => {
 	translatePage();
+	applyCustomFontToTranslatedText();  // 应用自定义字体
 });

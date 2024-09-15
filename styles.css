@@ -1,0 +1,18 @@
+@font-face {
+    font-family: 'PerfectDOSVGA437';
+    src: url('fonts/PerfectDOSVGA437.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'ShinMGoUprDeBold';
+    src: url('fonts/U-OTF-ShinMGoUpr-DeBold.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'ShinMGoUprMedium';
+    src: url('fonts/U-OTF-ShinMGoUpr-Medium.otf') format('opentype');
+}
+
+.translated-text {
+    font-family: 'ShinMGoUprMedium';
+}
