@@ -4,8 +4,12 @@
   "version": "1.0",
   "description": "Translates text on the page to another language.",
   "permissions": [
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
+  "action": {
+    "default_popup": "popup.html"
+  },
   "content_scripts": [
     {
       "matches": ["https://arona.ai/*"],
@@ -29,7 +33,11 @@
         "furniture_name_mapping.json",
         "furniture_Desc_mapping.json",
         "item_name_mapping.json",
-        "item_Desc_mapping.json"
+        "item_Desc_mapping.json",
+        "equipment_Desc_mapping.json",
+        "equipment_name_mapping.json",
+        "stages_name_mapping.json",
+        "stages_Event_mapping.json"
       ],
       "matches": ["https://arona.ai/*"]
     }
