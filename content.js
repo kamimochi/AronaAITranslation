@@ -4,6 +4,8 @@ let eventMapping = {};
 let isTranslating = false;
 let translationEnabled = false;
 let jsonLoaded = false;
+let isPlaying = false;
+
 
 function applyCustomFontToTranslatedText() {
     const translatedElements = document.querySelectorAll('.translated-text'); // 选择翻译后的文本元素
@@ -87,7 +89,7 @@ Promise.all([
 		equipment_name_mapping = equipment_name_mappingData;
 		stages_name_mapping = stages_name_mappingData;
 		stages_Event_mapping = stages_Event_mappingData;
-		other = otherData;
+
 
 		// 标记 JSON 文件已加载
 		jsonLoaded = true;
@@ -197,6 +199,10 @@ function translateBrackets(originalText) {
 
 function translateText(originalText) {
 	let translatedText = originalText;
+	
+	if (/^\d{1,2}:\d{2}$/.test(originalText)) {
+        return originalText; // 如果是時間格式，直接返回原始文本，不進行翻譯
+    }
 
 	// 优先处理带有括号的部分
 	translatedText = translateBrackets(translatedText); // 翻译括号内的内容
@@ -264,16 +270,25 @@ const throttledObserver = () => {
 	}
 };
 
-// 使用 MutationObserver 监听页面内容的变化（如动态加载的内容）
 const observer = new MutationObserver((mutationsList) => {
 	for (let mutation of mutationsList) {
 		if (mutation.type === 'childList') {
-			// 当 DOM 变化时，重新翻译页面
-			throttledObserver();
+			// 获取变动的节点
+			const addedNodes = Array.from(mutation.addedNodes);
+			
+			// 过滤掉播放器时间的 DOM 节点，避免翻译播放器时间
+			const shouldSkipTranslation = addedNodes.some(node => {
+				// 检查节点是否属于播放器的时间显示
+				return node.nodeType === Node.TEXT_NODE && /^(?:\d{1,2}:\d{2})$/.test(node.textContent);
+			});
+
+			// 如果没有播放器时间节点，则继续翻译
+			if (!shouldSkipTranslation) {
+				throttledObserver();  // 调用节流的翻译函数
+			}
 		}
 	}
 });
-
 // 开始观察 body 节点，监听子元素的变化
 observer.observe(document.body, {
 	childList: true,
