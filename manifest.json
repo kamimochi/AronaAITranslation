@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Arona.ai Translator(中文化)",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "把Arona.ai翻譯成中文",
   "permissions": [
     "activeTab",
