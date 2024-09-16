@@ -270,22 +270,35 @@ const throttledObserver = () => {
 	}
 };
 
+const playButton = document.querySelector('.MuiButtonBase-root.MuiIconButton-root.MuiIconButton-colorPrimary.MuiIconButton-sizeMedium.css-39nlm1');
+const checkbox = document.querySelector('.MuiButtonBase-root.MuiCheckbox-root.MuiCheckbox-colorPrimary.MuiCheckbox-sizeMedium.PrivateSwitchBase-root.MuiCheckbox-root.MuiCheckbox-colorPrimary.MuiCheckbox-sizeMedium.Mui-checked.MuiCheckbox-root.MuiCheckbox-colorPrimary.MuiCheckbox-sizeMedium.css-zun73v');
+
+
 const observer = new MutationObserver((mutationsList) => {
 	for (let mutation of mutationsList) {
 		if (mutation.type === 'childList') {
 			// 获取变动的节点
 			const addedNodes = Array.from(mutation.addedNodes);
-			
+	
 			// 过滤掉播放器时间的 DOM 节点，避免翻译播放器时间
 			const shouldSkipTranslation = addedNodes.some(node => {
-				// 检查节点是否属于播放器的时间显示
+				// 检查节点是否是文本节点，并且内容符合时间格式 (如 00:00, 01:23)
 				return node.nodeType === Node.TEXT_NODE && /^(?:\d{1,2}:\d{2})$/.test(node.textContent);
 			});
-
-			// 如果没有播放器时间节点，则继续翻译
-			if (!shouldSkipTranslation) {
-				throttledObserver();  // 调用节流的翻译函数
+	
+			// 过滤掉播放器按钮交互事件
+			const isButtonInteraction = addedNodes.some(node => {
+				// 检查节点是否是元素节点，并且是播放按钮或复选框 (假设类名为playButton 和 checkbox)
+				return node.nodeType === Node.ELEMENT_NODE && (node.closest('.playButton') || node.closest('.checkbox'));
+			});
+	
+			// 如果是按钮交互或者播放器时间变化，则跳过翻译
+			if (isButtonInteraction || shouldSkipTranslation) {
+				continue;  // 直接跳过本次循环
 			}
+	
+			// 否则执行翻译
+			throttledObserver();
 		}
 	}
 });
