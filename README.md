@@ -10,3 +10,7 @@ ChatGPT
 # 如何新增翻譯
 
 根目錄的dictionary.json 可以新增翻譯
+
+# 安裝
+
+本項目還在審核中，審核完就上架到Google chrome Plugin Store
