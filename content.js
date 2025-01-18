@@ -4,6 +4,7 @@ let eventMapping = {};
 let isTranslating = false;
 let translationEnabled = false;
 let jsonLoaded = false;
+let debugMode = false; // Debug mode state
 
 function applyCustomFontToTranslatedText() {
     document.querySelectorAll('.translated-text').forEach(element => {
@@ -22,12 +23,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             translationEnabled = false;
             location.reload();
         });
+    } else if (request.action === 'toggleDebugMode') {
+        chrome.storage.sync.set({ debugMode: request.debugMode }, () => {
+            debugMode = request.debugMode;
+            if (debugMode) {
+                console.log("Debug Mode is ON. Refreshing page and enabling content logging...");
+                printPageContent();
+            } else {
+                console.log("Debug Mode is OFF.");
+            }
+        });
     }
 });
 
-chrome.storage.sync.get(["translationEnabled"], result => {
+chrome.storage.sync.get(["translationEnabled", "debugMode"], result => {
     translationEnabled = result.translationEnabled || false;
+    debugMode = result.debugMode || false;
     if (translationEnabled && jsonLoaded) translatePage();
+    if (debugMode) {
+        console.log("Debug Mode is enabled. Logging page content updates.");
+    }
 });
 
 const jsonFiles = [
@@ -58,18 +73,17 @@ Promise.allSettled(jsonFiles.map(file => fetch(chrome.runtime.getURL(`json/${fil
     })
     .catch(err => console.error('Error loading JSON files:', err));
 
-function escapeRegExp(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    
 
 function translateTextUsingInnerHTML(originalHTML) {
     let translatedHTML = originalHTML;
 
     const sortedDictionary = Object.entries(dictionary).sort(([a], [b]) => b.length - a.length);
     sortedDictionary.forEach(([koreanWord, chineseWord]) => {
-        const regex = koreanWord.includes('(單字)')
-            ? new RegExp(`(?<=\d)${escapeRegExp(koreanWord)}|${escapeRegExp(koreanWord)}(?=\d)`, 'g')
-            : new RegExp(escapeRegExp(koreanWord), 'gi');
+        const regex = new RegExp(escapeRegExp(koreanWord), 'gi');
         translatedHTML = translatedHTML.replace(regex, chineseWord);
     });
 
@@ -92,13 +106,27 @@ function translatePage() {
     isTranslating = false;
 }
 
+function printPageContent() {
+    document.body.querySelectorAll('*:not(script):not(style)').forEach(element => {
+        if (element.children.length === 0 && element.innerHTML.trim() !== '') {
+            console.log("Debug: Element content:", element.innerHTML.trim());
+        }
+    });
+}
+
 const observer = new MutationObserver(mutations => {
     const shouldTranslate = mutations.some(mutation =>
         Array.from(mutation.addedNodes).some(node =>
             node.nodeType === Node.ELEMENT_NODE && node.innerHTML.trim() !== ''
         )
     );
-    if (shouldTranslate) translatePage();
+    if (shouldTranslate) {
+        if (debugMode) {
+            console.log("Debug: Mutation detected. Printing updated content.");
+            printPageContent();
+        }
+        translatePage();
+    }
 });
 
 observer.observe(document.body, { childList: true, subtree: true });
@@ -106,4 +134,8 @@ observer.observe(document.body, { childList: true, subtree: true });
 document.addEventListener('DOMContentLoaded', () => {
     translatePage();
     applyCustomFontToTranslatedText();
+    if (debugMode) {
+        console.log("Debug: DOMContentLoaded event triggered. Printing initial page content.");
+        printPageContent();
+    }
 });
