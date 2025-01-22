@@ -218,8 +218,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log(`Language switched to: ${currentLanguage}`);
 
     // 重新載入對應資料夾的 JSON 檔
-    jsonLoaded = false; // 先重置
-    loadLanguageFiles(currentLanguage);
+    location.reload();
   }
 });
 
