@@ -39,6 +39,8 @@
         "json/equipment_name_mapping.json",
         "json/stages_name_mapping.json",
         "json/stages_Event_mapping.json",
+        "json/TacticRole.json",
+        "json/ArmorType.json",
         "JPN-json/TacticRole.json",
         "JPN-json/ArmorType.json",
         "JPN-json/dictionary.json",

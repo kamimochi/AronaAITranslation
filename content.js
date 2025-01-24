@@ -142,6 +142,16 @@ function translatePage() {
  * 觀察動態新增節點並翻譯
  */
 const globalObserver = new MutationObserver(mutations => {
+  // 先印 Debug，再看翻譯要不要執行
+  if (debugMode) {
+    console.log("Debug: DOM mutation observed. Printing updated page content.");
+    printPageContent();
+  }
+
+  // 如果翻譯關閉，就跳出
+  if (!translationEnabled) return;
+
+  // 否則再做翻譯
   mutations.forEach(mutation => {
     mutation.addedNodes.forEach(node => {
       if (node.nodeType === Node.ELEMENT_NODE) {
@@ -151,13 +161,8 @@ const globalObserver = new MutationObserver(mutations => {
       }
     });
   });
-  if (debugMode) {
-    console.log("Debug: DOM mutation observed. Printing updated page content.");
-    printPageContent();
-  }
 });
 globalObserver.observe(document.body, { childList: true, subtree: true });
-
 /**
  * 其他工具或函式
  */
