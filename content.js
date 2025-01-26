@@ -142,7 +142,7 @@ function translatePage() {
  * 觀察動態新增節點並翻譯
  */
 const globalObserver = new MutationObserver(mutations => {
-  globalObserver.disconnect();
+  globalObserver.disconnect(); // 先暫停觀察，避免重複觸發
   // 先印 Debug，再看翻譯要不要執行
   if (debugMode) {
     console.log("Debug: DOM mutation observed. Printing updated page content.");
@@ -155,7 +155,7 @@ const globalObserver = new MutationObserver(mutations => {
   // 否則再做翻譯
   mutations.forEach(mutation => {
     if (mutation.type === 'characterData') {
-      translateTextNodesInElement(mutation.target);
+      translateTextNodesInElement(mutation.target); // 翻譯文字節點
     }
     mutation.addedNodes.forEach(node => {
       if (node.nodeType === Node.ELEMENT_NODE) {
@@ -165,7 +165,7 @@ const globalObserver = new MutationObserver(mutations => {
       }
     });
   });
-  globalObserver.observe(document.body, observerConfig);
+  globalObserver.observe(document.body, observerConfig); // 繼續觀察
 });
 
 const observerConfig = {
@@ -175,7 +175,7 @@ const observerConfig = {
   characterDataOldValue: true
 };
 
-globalObserver.observe(document.body, observerConfig);
+globalObserver.observe(document.body, observerConfig); // 開始觀察
 /**
  * 其他工具或函式
  */
