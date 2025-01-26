@@ -142,6 +142,7 @@ function translatePage() {
  * 觀察動態新增節點並翻譯
  */
 const globalObserver = new MutationObserver(mutations => {
+  globalObserver.disconnect();
   // 先印 Debug，再看翻譯要不要執行
   if (debugMode) {
     console.log("Debug: DOM mutation observed. Printing updated page content.");
@@ -153,6 +154,9 @@ const globalObserver = new MutationObserver(mutations => {
 
   // 否則再做翻譯
   mutations.forEach(mutation => {
+    if (mutation.type === 'characterData') {
+      translateTextNodesInElement(mutation.target);
+    }
     mutation.addedNodes.forEach(node => {
       if (node.nodeType === Node.ELEMENT_NODE) {
         translateTextNodesInElement(node);
@@ -161,8 +165,17 @@ const globalObserver = new MutationObserver(mutations => {
       }
     });
   });
+  globalObserver.observe(document.body, observerConfig);
 });
-globalObserver.observe(document.body, { childList: true, subtree: true });
+
+const observerConfig = {
+  childList: true,
+  subtree: true,
+  characterData: true,
+  characterDataOldValue: true
+};
+
+globalObserver.observe(document.body, observerConfig);
 /**
  * 其他工具或函式
  */
@@ -192,6 +205,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   applyCustomFontToTranslatedText();
 });
+
+
 
 /**
  * 監聽來自 popup.js/ background.js 的訊息
