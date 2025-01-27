@@ -46,7 +46,9 @@ function loadLanguageFiles(language) {
     'stages_name_mapping.json',
     'stages_Event_mapping.json',
     'ArmorType.json',
-    'TacticRole.json'
+    'TacticRole.json',
+    'ProfileIntroduction.json',
+    'WeaponNameMapping.json'
   ];
 
   // 為了重新載入時清空 data（避免多次切換語言造成詞典混雜）

@@ -24,6 +24,7 @@ py locjsonstu.py
 py locjsonTacticRole.py
 py stages.py
 py Event.py
-
+py ProfileIntroductionStu.py
+py WeaponName.py
 echo All Python scripts have been executed.
 pause
