@@ -49,7 +49,7 @@ function loadLanguageFiles(language) {
     'TacticRole.json'
   ];
 
-  // 為了重新載入時清空 data（避免多次切換語言造成詞典混雜），可視需求而定
+  // 為了重新載入時清空 data（避免多次切換語言造成詞典混雜）
   data = {};
 
   return Promise.allSettled(
@@ -72,6 +72,7 @@ function loadLanguageFiles(language) {
 
       // 依照 key 長度降序排序，避免長字串被短字串先取代
       sortedDictionary = Object.entries(data).sort(([keyA], [keyB]) => keyB.length - keyA.length);
+
       // 設定載入完成
       jsonLoaded = true;
 
@@ -84,11 +85,12 @@ function loadLanguageFiles(language) {
 }
 
 /**
- * 文字節點翻譯
+ * 文字節點翻譯：只在翻譯後結果跟原文「不同」時才寫回，以避免不必要的 DOM 改動
  */
 function translateString(originalText) {
   let translatedText = originalText;
   sortedDictionary.forEach(([koreanWord, chineseWord]) => {
+    // 全域、大小寫不敏感替換
     const regex = new RegExp(escapeRegExp(koreanWord), 'gi');
     translatedText = translatedText.replace(regex, chineseWord);
   });
@@ -112,13 +114,20 @@ const skipSelector = [
  */
 function translateTextNodesInElement(node) {
   if (node.nodeType === Node.TEXT_NODE) {
-    const trimmed = node.textContent.trim();
+    const original = node.textContent;
+    const trimmed = original.trim();
+
     if (trimmed.length > 0) {
-      node.textContent = translateString(node.textContent);
+      const newText = translateString(original);
+      // 只有在翻譯結果和原本不一樣時才回寫
+      if (newText !== original) {
+        node.textContent = newText;
+      }
     }
     return;
   }
   if (node.nodeType === Node.ELEMENT_NODE) {
+    // 若此元素符合 skipSelector，就整塊跳過
     if (skipSelector.some(selector => node.matches(selector))) {
       return;
     }
@@ -139,51 +148,15 @@ function translatePage() {
 }
 
 /**
- * 觀察動態新增節點並翻譯
+ * 用於在正則中逃脫特殊字元
  */
-const globalObserver = new MutationObserver(mutations => {
-  globalObserver.disconnect(); // 先暫停觀察，避免重複觸發
-  // 先印 Debug，再看翻譯要不要執行
-  if (debugMode) {
-    console.log("Debug: DOM mutation observed. Printing updated page content.");
-    printPageContent();
-  }
-
-  // 如果翻譯關閉，就跳出
-  if (!translationEnabled) return;
-
-  // 否則再做翻譯
-  mutations.forEach(mutation => {
-    if (mutation.type === 'characterData') {
-      translateTextNodesInElement(mutation.target); // 翻譯文字節點
-    }
-    mutation.addedNodes.forEach(node => {
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        translateTextNodesInElement(node);
-      } else if (node.nodeType === Node.TEXT_NODE) {
-        translateTextNodesInElement(node);
-      }
-    });
-  });
-  globalObserver.observe(document.body, observerConfig); // 繼續觀察
-});
-
-const observerConfig = {
-  childList: true,
-  subtree: true,
-  characterData: true,
-  characterDataOldValue: true
-};
-
-globalObserver.observe(document.body, observerConfig); // 開始觀察
-/**
- * 其他工具或函式
- */
-function applyCustomFontToTranslatedText() {
-  document.querySelectorAll('.translated-text').forEach(element => {
-    element.style.fontFamily = "'ShinMGoUprMedium', sans-serif";
-  });
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+/**
+ * Debug: 印出頁面文字
+ */
 function printPageContent() {
   document.body.querySelectorAll('*:not(script):not(style)').forEach(element => {
     if (element.children.length === 0 && element.innerHTML.trim() !== '') {
@@ -191,22 +164,56 @@ function printPageContent() {
     }
   });
 }
-function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 /**
- * 監聽 DOMContentLoaded 後嘗試翻譯
+ * 避免Mutation多次頻繁觸發：用簡單debounce
+ */
+let mutationTimer = null;
+const DEBOUNCE_DELAY = 100; // (ms) 您可自行調整
+
+/**
+ * 建立 MutationObserver
+ */
+const observerConfig = {
+  childList: true,
+  subtree: true,
+  characterData: true,
+  characterDataOldValue: true
+};
+
+const globalObserver = new MutationObserver(mutations => {
+  // 如果翻譯關閉，就直接跳過
+  if (!translationEnabled) return;
+
+  if (debugMode) {
+    console.log("Debug: DOM mutation observed. Printing updated page content.");
+    printPageContent();
+  }
+
+  // 暫時停止觀察
+  globalObserver.disconnect();
+
+  // 用 setTimeout 做簡易節流：在DEBOUNCE_DELAY ms內若多次呼叫，只執行最後一次
+  clearTimeout(mutationTimer);
+  mutationTimer = setTimeout(() => {
+    // 執行翻譯
+    translatePage();
+    // 翻譯完畢後，恢復監聽
+    globalObserver.observe(document.body, observerConfig);
+  }, DEBOUNCE_DELAY);
+});
+
+// 啟用Observer
+globalObserver.observe(document.body, observerConfig);
+
+/**
+ * 監聽 DOMContentLoaded 後，如果字典已載入 & 翻譯啟用，直接翻譯
  */
 document.addEventListener('DOMContentLoaded', () => {
-  // 如果 json 已載入且翻譯已啟用就直接翻譯
   if (jsonLoaded && translationEnabled) {
     translatePage();
   }
-  applyCustomFontToTranslatedText();
 });
-
-
 
 /**
  * 監聽來自 popup.js/ background.js 的訊息
@@ -220,7 +227,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === 'disableTranslation') {
     chrome.storage.sync.set({ translationEnabled: false }, () => {
       translationEnabled = false;
-      location.reload();
+      location.reload(); // 直接重整，可避免還原文字的麻煩
     });
   } else if (request.action === 'toggleDebugMode') {
     chrome.storage.sync.set({ debugMode: request.debugMode }, () => {
@@ -236,13 +243,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // 切換語言時，先更新 currentLanguage
     currentLanguage = request.language;
     console.log(`Language switched to: ${currentLanguage}`);
-
-    // 重新載入對應資料夾的 JSON 檔
+    // 再重整頁面 or 可直接重載字典
     location.reload();
   }
 });
 
-// -------------------- 在初始化階段，就根據 storage 讀取語言並載入對應檔案 --------------------
+/**
+ * 在初始化階段，根據 storage 讀取翻譯是否啟用 / debugMode / 選擇的語言
+ * 然後載入對應語言的 JSON
+ */
 chrome.storage.sync.get(["translationEnabled", "debugMode", "selectedLanguage"], (result) => {
   translationEnabled = !!result.translationEnabled;
   debugMode = !!result.debugMode;
