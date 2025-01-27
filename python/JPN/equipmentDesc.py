@@ -2,7 +2,7 @@ import json
 import requests
 
 # Define the URLs for the online JSON files
-jp_url = 'https://schaledb.com/data/tw/equipment.json'
+jp_url = 'https://schaledb.com/data/jp/equipment.json'
 kr_url = 'https://schaledb.com/data/kr/equipment.json'
 
 # Fetch the JSON data from the URLs
@@ -17,16 +17,21 @@ kr_response.raise_for_status()
 jp_data = jp_response.json()
 kr_data = kr_response.json()
 
-# Create dictionaries to store the "Name" fields from both files
-jp_name_mapping = {item["Id"]: item["Desc"] for item in jp_data if "Desc" in item}
-kr_name_mapping = {item["Id"]: item["Desc"] for item in kr_data if "Desc" in item}
+# Create a dictionary to store the description mappings
+desc_mapping = {}
 
-# Generate the mapping bejpeen Korean and Traditional Chinese names based on "Id"
-name_mapping = {kr_name_mapping[key]: jp_name_mapping[key] for key in kr_name_mapping if key in jp_name_mapping}
+# Iterate through the Korean data and match descriptions with Traditional Chinese data using IDs
+for item_id, kr_item in kr_data.items():
+    jp_item = jp_data.get(item_id)  # Find the corresponding item in the Traditional Chinese data
+    if jp_item:  # Ensure the item exists in both datasets
+        kr_desc = kr_item.get("Desc")
+        jp_desc = jp_item.get("Desc")
+        if kr_desc and jp_desc:  # Ensure both descriptions exist
+            desc_mapping[kr_desc] = jp_desc
 
 # Output the result to a JSON file
 output_file = 'equipment_Desc_mapping.json'
 with open(output_file, 'w', encoding='utf-8') as outfile:
-    json.dump(name_mapping, outfile, ensure_ascii=False, indent=4)
+    json.dump(desc_mapping, outfile, ensure_ascii=False, indent=4)
 
-print(f"Name mapping saved to {output_file}")
+print(f"Description mapping saved to {output_file}")

@@ -1,32 +1,38 @@
 import json
 import requests
 
-# Define the URLs for the online JSON files
+# 定义 URLs
 jp_url = 'https://schaledb.com/data/jp/items.json'
 kr_url = 'https://schaledb.com/data/kr/items.json'
 
-# Fetch the JSON data from the URLs
+# 获取数据
 jp_response = requests.get(jp_url)
 kr_response = requests.get(kr_url)
 
-# Ensure the requests were successful
+# 确保请求成功
 jp_response.raise_for_status()
 kr_response.raise_for_status()
 
-# Load the JSON data from the response
+# 加载 JSON 数据
 jp_data = jp_response.json()
 kr_data = kr_response.json()
 
-# Create dictionaries to store the "Name" fields from both files
-jp_name_mapping = {item["Id"]: item["Desc"] for item in jp_data if "Desc" in item}
-kr_name_mapping = {item["Id"]: item["Desc"] for item in kr_data if "Desc" in item}
+# 创建字典存储韩文到繁体中文的描述映射
+desc_mapping = {}
 
-# Generate the mapping between Korean and Traditional Chinese names based on "Id"
-name_mapping = {kr_name_mapping[key]: jp_name_mapping[key] for key in kr_name_mapping if key in jp_name_mapping}
+# 遍历韩文数据，使用相同的 ID 匹配繁体中文数据
+for item_id, kr_item in kr_data.items():
+    jp_item = jp_data.get(item_id)  # 获取繁体中文数据
+    if jp_item:  # 如果繁体中文数据存在
+        kr_desc = kr_item.get("Desc")  # 韩文描述
+        jp_desc = jp_item.get("Desc")  # 繁体中文描述
+        if kr_desc and jp_desc:  # 确保描述字段存在
+            desc_mapping[kr_desc] = jp_desc
 
-# Output the result to a JSON file
+# 将结果保存到 JSON 文件
 output_file = 'item_Desc_mapping.json'
 with open(output_file, 'w', encoding='utf-8') as outfile:
-    json.dump(name_mapping, outfile, ensure_ascii=False, indent=4)
+    json.dump(desc_mapping, outfile, ensure_ascii=False, indent=4)
 
-print(f"Name mapping saved to {output_file}")
+print(f"Description mapping saved to {output_file}")
+# Description mapping saved to item_Desc_mapping.json

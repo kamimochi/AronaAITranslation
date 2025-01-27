@@ -17,12 +17,17 @@ kr_response.raise_for_status()
 tw_data = tw_response.json()
 kr_data = kr_response.json()
 
-# Create dictionaries to store the "Name" fields from both files
-tw_name_mapping = [item["Name"] for item in tw_data.get("Campaign", []) if "Name" in item]
-kr_name_mapping = [item["Name"] for item in kr_data.get("Campaign", []) if "Name" in item]
+# Create a dictionary to store the mapping
+name_mapping = {}
 
-# Generate the mapping between Korean and Traditional Chinese names based on their indices
-name_mapping = {kr_name: tw_name for kr_name, tw_name in zip(kr_name_mapping, tw_name_mapping)}
+# Iterate through the Korean data and match with Traditional Chinese data using IDs
+for stage_id, kr_stage in kr_data.items():
+    tw_stage = tw_data.get(stage_id)  # Find the corresponding stage in the Traditional Chinese data
+    if tw_stage:  # Ensure the stage exists in both datasets
+        kr_name = kr_stage.get("Name")
+        tw_name = tw_stage.get("Name")
+        if kr_name and tw_name:  # Ensure both names exist
+            name_mapping[kr_name] = tw_name
 
 # Output the result to a JSON file
 output_file = 'stages_name_mapping.json'

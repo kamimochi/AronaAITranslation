@@ -1,30 +1,35 @@
 import json
 import requests
 
-# Define the URLs for the online JSON files
+# 定义 URLs
 jp_url = 'https://schaledb.com/data/jp/furniture.json'
 kr_url = 'https://schaledb.com/data/kr/furniture.json'
 
-# Fetch the JSON data from the URLs
+# 获取数据
 jp_response = requests.get(jp_url)
 kr_response = requests.get(kr_url)
 
-# Ensure the requests were successful
+# 确保请求成功
 jp_response.raise_for_status()
 kr_response.raise_for_status()
 
-# Load the JSON data from the response
+# 加载 JSON 数据
 jp_data = jp_response.json()
 kr_data = kr_response.json()
 
-# Create dictionaries to store the "Name" fields from both files
-jp_name_mapping = {item["Id"]: item["Name"] for item in jp_data if "Name" in item}
-kr_name_mapping = {item["Id"]: item["Name"] for item in kr_data if "Name" in item}
+# 创建字典存储韩文到繁体中文的名称映射
+name_mapping = {}
 
-# Generate the mapping bejpeen Korean and Traditional Chinese names based on "Id"
-name_mapping = {kr_name_mapping[key]: jp_name_mapping[key] for key in kr_name_mapping if key in jp_name_mapping}
+# 遍历韩文数据，通过相同的 ID 匹配繁体中文数据
+for item_id, kr_item in kr_data.items():
+    jp_item = jp_data.get(item_id)  # 获取繁体中文数据
+    if jp_item:  # 如果繁体中文数据存在
+        kr_name = kr_item.get("Name")  # 韩文名称
+        jp_name = jp_item.get("Name")  # 繁体中文名称
+        if kr_name and jp_name:  # 确保名称字段存在
+            name_mapping[kr_name] = jp_name
 
-# Output the result to a JSON file
+# 将结果保存到 JSON 文件
 output_file = 'furniture_name_mapping.json'
 with open(output_file, 'w', encoding='utf-8') as outfile:
     json.dump(name_mapping, outfile, ensure_ascii=False, indent=4)
