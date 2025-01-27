@@ -2,8 +2,8 @@ import json
 import requests
 
 # Define the URLs for the online JSON files
-tw_url = 'https://raw.githubusercontent.com/SchaleDB/SchaleDB/main/data/tw/furniture.json'
-kr_url = 'https://raw.githubusercontent.com/SchaleDB/SchaleDB/main/data/kr/furniture.json'
+tw_url = 'https://schaledb.com/data/tw/furniture.json'
+kr_url = 'https://schaledb.com/data/kr/furniture.json'
 
 # Fetch the JSON data from the URLs
 tw_response = requests.get(tw_url)

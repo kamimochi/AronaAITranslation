@@ -2,8 +2,8 @@ import json
 import requests
 
 # Define the URLs for the online JSON files
-jp_url = 'https://raw.githubusercontent.com/SchaleDB/SchaleDB/main/data/jp/items.json'
-kr_url = 'https://raw.githubusercontent.com/SchaleDB/SchaleDB/main/data/kr/items.json'
+jp_url = 'https://schaledb.com/data/jp/items.json'
+kr_url = 'https://schaledb.com/data/kr/items.json'
 
 # Fetch the JSON data from the URLs
 jp_response = requests.get(jp_url)
@@ -21,7 +21,7 @@ kr_data = kr_response.json()
 jp_name_mapping = {item["Id"]: item["Desc"] for item in jp_data if "Desc" in item}
 kr_name_mapping = {item["Id"]: item["Desc"] for item in kr_data if "Desc" in item}
 
-# Generate the mapping bejpeen Korean and Traditional Chinese names based on "Id"
+# Generate the mapping between Korean and Traditional Chinese names based on "Id"
 name_mapping = {kr_name_mapping[key]: jp_name_mapping[key] for key in kr_name_mapping if key in jp_name_mapping}
 
 # Output the result to a JSON file

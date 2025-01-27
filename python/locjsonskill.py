@@ -1,43 +1,50 @@
 import json
 import requests
 
-tw_url = 'https://raw.githubusercontent.com/SchaleDB/SchaleDB/main/data/tw/students.json'
-kr_url = 'https://raw.githubusercontent.com/SchaleDB/SchaleDB/main/data/kr/students.json'
+# 请求数据
+tw_url = 'https://schaledb.com/data/tw/students.json'
+kr_url = 'https://schaledb.com/data/kr/students.json'
 
 tw_response = requests.get(tw_url)
 kr_response = requests.get(kr_url)
 
-# Ensure the requests were successful
+# 确保请求成功
 kr_response.raise_for_status()
 tw_response.raise_for_status()
 
-# Load the JSON data from the response
+# 加载 JSON 数据
 kr_data = kr_response.json()
 tw_data = tw_response.json()
 
-# Create a dictionary to store the skill name mappings
+# 创建一个字典来存储技能名称映射
 skill_name_mapping = {}
 
-# Use a set to store already processed skill names to avoid duplication
-processed_skills = set()
+# 遍历两份数据以映射技能名称
+for student_id in kr_data:
+    kr_student = kr_data.get(student_id)
+    tw_student = tw_data.get(student_id)
 
-# Iterate over all students in both files to map skills
-skill_name_mapping = {}
+    # 确保两边都有学生数据
+    if not kr_student or not tw_student:
+        continue
 
-# Iterate over all students in both files to map skills
-for kr_student, tw_student in zip(kr_data, tw_data):
-    kr_skills = kr_student.get('Skills', [])
-    tw_skills = tw_student.get('Skills', [])
+    # 获取技能信息
+    kr_skills = kr_student.get('Skills', {})
+    tw_skills = tw_student.get('Skills', {})
 
-    for kr_skill, tw_skill in zip(kr_skills, tw_skills):
+    # 遍历技能信息
+    for skill_type in kr_skills:
+        kr_skill = kr_skills.get(skill_type, {})
+        tw_skill = tw_skills.get(skill_type, {})
+
         kr_skill_name = kr_skill.get('Name')
         tw_skill_name = tw_skill.get('Name')
 
-        # Check if the skill names are not None
+        # 确保技能名称存在
         if kr_skill_name and tw_skill_name:
             skill_name_mapping[kr_skill_name] = tw_skill_name
 
-# Save the result to a new JSON file
+# 将结果保存到 JSON 文件
 with open('skill_name_mapping.json', 'w', encoding='utf-8') as outfile:
     json.dump(skill_name_mapping, outfile, ensure_ascii=False, indent=4)
 
