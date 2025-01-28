@@ -4,28 +4,30 @@ let translationEnabled = false;
 let jsonLoaded = false;
 let debugMode = false;
 
-// 目前使用中的語言 (預設繁體中文)，後續可在 "setLanguage" 時更新
+// 目前使用中的語言 (預設繁體中文)
 let currentLanguage = 'zh_tw';
 
-// 存放載入後的字典（key-value）陣列
+// 原本的字典 (key-value) 陣列
 let sortedDictionary = [];
+
+// 新增：把字典先「預編譯」為正則與對應替換值
+let compiledPatterns = [];
 
 /**
  * 依語言載入對應資料夾下的 JSON 檔案
  */
 function loadLanguageFiles(language) {
-  // 根據語言指定資料夾
   let folderPath = '';
   if (language === 'zh_tw') {
-    folderPath = 'json/';       // 繁體中文放這裡
+    folderPath = 'json/';
   } else if (language === 'jpn') {
-    folderPath = 'JPN-json/';   // 日文放這裡
+    folderPath = 'JPN-json/';
   } else {
     console.warn(`No folder defined for language: ${language}`);
-    return Promise.resolve(); // 若不支援其他語言，可直接 return
+    return Promise.resolve(); 
   }
 
-  // 需要載入的檔案清單
+  // 要載入的檔案清單
   const files = [
     'dictionary.json',
     'students_mapping.json',
@@ -48,11 +50,11 @@ function loadLanguageFiles(language) {
     'ArmorType.json',
     'TacticRole.json',
     'ProfileIntroduction.json',
-    'WeaponNameMapping.json'
+    'WeaponNameMapping.json',
+    'crafting.json'
   ];
 
-  // 為了重新載入時清空 data（避免多次切換語言造成詞典混雜）
-  data = {};
+  data = {}; // 清空，避免多次切換語言詞典混雜
 
   return Promise.allSettled(
     files.map(file => {
@@ -63,22 +65,20 @@ function loadLanguageFiles(language) {
     .then(results => {
       results.forEach((result, index) => {
         if (result.status === 'fulfilled') {
-          const jsonContent = result.value;
-          // 合併到 data
-          Object.assign(data, jsonContent);
+          Object.assign(data, result.value);
           console.log(`Loaded: ${files[index]}`);
         } else {
           console.error(`Error loading ${files[index]}:`, result.reason);
         }
       });
 
-      // 依照 key 長度降序排序，避免長字串被短字串先取代
+      // 根據 key 長度降序排序
       sortedDictionary = Object.entries(data).sort(([keyA], [keyB]) => keyB.length - keyA.length);
 
-      // 設定載入完成
-      jsonLoaded = true;
+      // **在這裡執行「預編譯字典」：把每個關鍵字先轉成已編譯的 RegExp**
+      compileDictionary();
 
-      // 若翻譯功能本來就已啟用，載入完就立即翻譯
+      jsonLoaded = true;
       if (translationEnabled) {
         translatePage();
       }
@@ -87,15 +87,24 @@ function loadLanguageFiles(language) {
 }
 
 /**
- * 文字節點翻譯：只在翻譯後結果跟原文「不同」時才寫回，以避免不必要的 DOM 改動
+ * 把 sortedDictionary 編譯成 { pattern: /.../gi, replacement: ... }
+ */
+function compileDictionary() {
+  compiledPatterns = sortedDictionary.map(([koreanWord, chineseWord]) => {
+    const pattern = new RegExp(escapeRegExp(koreanWord), 'gi');
+    return { pattern, replacement: chineseWord };
+  });
+}
+
+/**
+ * 文字節點翻譯：使用「預編譯」的 pattern 逐一替換
+ * 只在翻譯後結果與原文不同時，才寫回
  */
 function translateString(originalText) {
   let translatedText = originalText;
-  sortedDictionary.forEach(([koreanWord, chineseWord]) => {
-    // 全域、大小寫不敏感替換
-    const regex = new RegExp(escapeRegExp(koreanWord), 'gi');
-    translatedText = translatedText.replace(regex, chineseWord);
-  });
+  for (const { pattern, replacement } of compiledPatterns) {
+    translatedText = translatedText.replace(pattern, replacement);
+  }
   return translatedText;
 }
 
@@ -118,10 +127,8 @@ function translateTextNodesInElement(node) {
   if (node.nodeType === Node.TEXT_NODE) {
     const original = node.textContent;
     const trimmed = original.trim();
-
     if (trimmed.length > 0) {
       const newText = translateString(original);
-      // 只有在翻譯結果和原本不一樣時才回寫
       if (newText !== original) {
         node.textContent = newText;
       }
@@ -129,7 +136,7 @@ function translateTextNodesInElement(node) {
     return;
   }
   if (node.nodeType === Node.ELEMENT_NODE) {
-    // 若此元素符合 skipSelector，就整塊跳過
+    // 符合 skipSelector 就整塊跳過
     if (skipSelector.some(selector => node.matches(selector))) {
       return;
     }
@@ -168,14 +175,11 @@ function printPageContent() {
 }
 
 /**
- * 避免Mutation多次頻繁觸發：用簡單debounce
+ * 避免 Mutation 多次頻繁觸發：用簡易 Debounce
  */
 let mutationTimer = null;
-const DEBOUNCE_DELAY = 100; // (ms) 您可自行調整
+const DEBOUNCE_DELAY = 100;
 
-/**
- * 建立 MutationObserver
- */
 const observerConfig = {
   childList: true,
   subtree: true,
@@ -183,33 +187,29 @@ const observerConfig = {
   characterDataOldValue: true
 };
 
-const globalObserver = new MutationObserver(mutations => {
-  // 如果翻譯關閉，就直接跳過
+const globalObserver = new MutationObserver(() => {
   if (!translationEnabled) return;
-
   if (debugMode) {
     console.log("Debug: DOM mutation observed. Printing updated page content.");
     printPageContent();
   }
 
-  // 暫時停止觀察
+  // 先斷開觀察
   globalObserver.disconnect();
 
-  // 用 setTimeout 做簡易節流：在DEBOUNCE_DELAY ms內若多次呼叫，只執行最後一次
+  // 100ms 內若還有新 Mutation，就清除再重設
   clearTimeout(mutationTimer);
   mutationTimer = setTimeout(() => {
-    // 執行翻譯
     translatePage();
-    // 翻譯完畢後，恢復監聽
     globalObserver.observe(document.body, observerConfig);
   }, DEBOUNCE_DELAY);
 });
 
-// 啟用Observer
+// 啟用 Observer
 globalObserver.observe(document.body, observerConfig);
 
 /**
- * 監聽 DOMContentLoaded 後，如果字典已載入 & 翻譯啟用，直接翻譯
+ * DOMContentLoaded：若字典已載入 & 翻譯已啟用，就翻譯
  */
 document.addEventListener('DOMContentLoaded', () => {
   if (jsonLoaded && translationEnabled) {
@@ -218,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * 監聽來自 popup.js/ background.js 的訊息
+ * 接收來自 popup / background 的訊息
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'enableTranslation') {
@@ -229,30 +229,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === 'disableTranslation') {
     chrome.storage.sync.set({ translationEnabled: false }, () => {
       translationEnabled = false;
-      location.reload(); // 直接重整，可避免還原文字的麻煩
+      location.reload();
     });
   } else if (request.action === 'toggleDebugMode') {
     chrome.storage.sync.set({ debugMode: request.debugMode }, () => {
       debugMode = request.debugMode;
       if (debugMode) {
-        console.log("Debug Mode is ON. Refreshing page and enabling content logging...");
+        console.log("Debug Mode is ON. Printing page content...");
         printPageContent();
       } else {
         console.log("Debug Mode is OFF.");
       }
     });
   } else if (request.action === 'setLanguage') {
-    // 切換語言時，先更新 currentLanguage
     currentLanguage = request.language;
     console.log(`Language switched to: ${currentLanguage}`);
-    // 再重整頁面 or 可直接重載字典
     location.reload();
   }
 });
 
 /**
- * 在初始化階段，根據 storage 讀取翻譯是否啟用 / debugMode / 選擇的語言
- * 然後載入對應語言的 JSON
+ * 初始化：從 storage 讀取設定 (translationEnabled、debugMode、selectedLanguage) 後，
+ * 載入對應語言 JSON，最後若啟用翻譯則執行 translatePage()
  */
 chrome.storage.sync.get(["translationEnabled", "debugMode", "selectedLanguage"], (result) => {
   translationEnabled = !!result.translationEnabled;
@@ -261,7 +259,6 @@ chrome.storage.sync.get(["translationEnabled", "debugMode", "selectedLanguage"],
 
   // 載入對應語言的 JSON
   loadLanguageFiles(currentLanguage).then(() => {
-    // JSON 載好後再做翻譯
     if (translationEnabled) {
       translatePage();
     }

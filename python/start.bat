@@ -26,6 +26,6 @@ py stages.py
 py Event.py
 py ProfileIntroductionStu.py
 py WeaponName.py
-
+py crafting.py
 echo All Python scripts have been executed.
 pause

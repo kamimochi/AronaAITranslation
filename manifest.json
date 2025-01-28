@@ -43,6 +43,7 @@
         "json/ArmorType.json",
         "json/ProfileIntroduction.json",
         "json/WeaponNameMapping.json",
+        "json/crafting.json",
         "JPN-json/TacticRole.json",
         "JPN-json/ArmorType.json",
         "JPN-json/dictionary.json",
@@ -68,6 +69,7 @@
         "JPN-json/ArmorType.json",
         "JPN-json/ProfileIntroduction.json",
         "JPN-json/WeaponNameMapping.json",
+        "JPN-json/crafting.json",
         "fonts/PerfectDOSVGA437.ttf",
         "fonts/U-OTF-ShinMGoUpr-DeBold.otf",
         "fonts/U-OTF-ShinMGoUpr-Medium.otf"
