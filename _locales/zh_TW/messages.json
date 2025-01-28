@@ -1,0 +1,51 @@
+{
+    "aboutTitle": {
+      "message": "關於我",
+      "description": "關於頁面標題"
+    },
+    "appName": {
+      "message": "Arona.ai 翻譯器(中文化)",
+      "description": "應用名稱"
+    },
+    "version": {
+      "message": "版本: 0.0.3",
+      "description": "應用版本"
+    },
+    "author": {
+      "message": "作者 fiseleo kamimochi。",
+      "description": "開發者資訊"
+    },
+    "description": {
+      "message": "把Arona.ai翻譯成中文與日文。",
+      "description": "功能描述"
+    },
+    "contact": {
+      "message": "如果有任何問題，請聯絡我。",
+      "description": "聯絡資訊"
+    },
+    "thanks": {
+      "message": "感謝您的使用！",
+      "description": "感謝訊息"
+    },
+    "githubLink": {
+      "message": "GitHub 專案連結",
+      "description": "GitHub 連結"
+    },
+    "skillIncomplete": {
+      "message": "目前技能和介紹未完成",
+      "description": "功能未完成的提示"
+    },
+    "changelogTitle": {
+      "message": "版本記錄",
+      "description": "變更記錄標題"
+    },
+    "changelog_002": {
+      "message": "0.0.2 修正 BGM 播放器，放 BGM 會 lag 的問題。",
+      "description": "0.0.2 版本變更記錄"
+    },
+    "changelog_003": {
+      "message": "0.0.3 重構程式，新增日文翻譯。",
+      "description": "0.0.3 版本變更記錄"
+    }
+  }
+  

@@ -1,0 +1,51 @@
+{
+    "aboutTitle": {
+      "message": "私について",
+      "description": "About ページのタイトル"
+    },
+    "appName": {
+      "message": "Arona.ai 翻訳ツール",
+      "description": "アプリの名前"
+    },
+    "version": {
+      "message": "バージョン: 0.0.3",
+      "description": "アプリのバージョン"
+    },
+    "author": {
+      "message": "作者 fiseleo kamimochi。",
+      "description": "開発者情報"
+    },
+    "description": {
+      "message": "Arona.ai を中国語と日本語に翻訳する。",
+      "description": "機能の説明"
+    },
+    "contact": {
+      "message": "質問がある場合は、お問い合わせください。",
+      "description": "連絡情報"
+    },
+    "thanks": {
+      "message": "ご利用いただきありがとうございます！",
+      "description": "感謝メッセージ"
+    },
+    "githubLink": {
+      "message": "GitHub プロジェクトリンク",
+      "description": "GitHub リンク"
+    },
+    "skillIncomplete": {
+      "message": "現在、スキルと紹介は未完成です。",
+      "description": "機能が未完成の通知"
+    },
+    "changelogTitle": {
+      "message": "バージョン履歴",
+      "description": "変更履歴タイトル"
+    },
+    "changelog_002": {
+      "message": "0.0.2 BGMプレーヤーのラグ問題を修正。",
+      "description": "0.0.2 バージョン変更履歴"
+    },
+    "changelog_003": {
+      "message": "0.0.3 コードをリファクタリング、日本語翻訳を追加。",
+      "description": "0.0.3 バージョン変更履歴"
+    }
+  }
+  

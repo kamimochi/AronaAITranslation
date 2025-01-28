@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Text Translator</title>
+  <title data-i18n="extName">Text Translator</title>
   <style>
     body {
       min-width: 200px;
@@ -11,25 +11,24 @@
     label {
       font-size: 14px;
     }
-    #about-section {
-      display: none;
-    }
   </style>
 </head>
 <body>
   <label>
-    <input type="checkbox" id="toggle-translation"> 啟用翻譯
+    <input type="checkbox" id="toggle-translation">
+    <span data-i18n="toggleTranslation">啟用翻譯</span>
   </label>
   <br>
   <label>
-    <input type="checkbox" id="toggle-debug"> Debug Mode
+    <input type="checkbox" id="toggle-debug">
+    <span data-i18n="toggleDebug">Debug 模式</span>
   </label>
   <br>
   <select id="language-select">
     <option value="zh_tw">繁體中文 (zh_tw)</option>
     <option value="jpn">日本語 (jpn)</option>
   </select>
-  <button id="about-btn">關於我</button>
+  <button id="about-btn" data-i18n="about">關於我</button>
 
   <script src="popup.js"></script>
 </body>
