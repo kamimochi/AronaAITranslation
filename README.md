@@ -19,7 +19,7 @@ ChatGPT
 # Discord
 
 我的Discord ID : afiseleo789  
-JP Discord ID: kamimochi
+For JP Discord ID: kamimochi
 
 # 日本の方へ
 
