@@ -4,7 +4,7 @@
       "description": "關於頁面標題"
     },
     "appName": {
-      "message": "Arona.ai 翻譯器(中文化)",
+      "message": "Arona.ai Translator",
       "description": "應用名稱"
     },
     "version": {
@@ -32,7 +32,7 @@
       "description": "GitHub 連結"
     },
     "skillIncomplete": {
-      "message": "目前技能和介紹未完成",
+      "message": "目前技能和momotalk個人介紹未完成",
       "description": "功能未完成的提示"
     },
     "changelogTitle": {
