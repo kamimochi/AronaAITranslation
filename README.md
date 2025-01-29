@@ -14,7 +14,7 @@ ChatGPT
 
 # 安裝
 [Google chrome Plugin Store](https://chromewebstore.google.com/detail/aronaai-translator/bdkmgaodjbbcjcbpnccbpgnhdjojknkb)
-[Firefox Browser ADD-ONS](https://addons.mozilla.org/zh-TW/firefox/search/?q=Arona.ai%20Translator)
+[Firefox Browser ADD-ONS](https://addons.mozilla.org/zh-TW/firefox/addon/arona-ai-translator/)
 
 
 # Discord
