@@ -1,6 +1,7 @@
 # AronaAITranslation
 
-把Arona.ai 中文化，本人韓語不太會，用Schale.gg和ChatGPT 翻譯
+把Arona.ai 翻成中文與日文
+用Schale.gg和ChatGPT 翻譯
 
 # 致謝
 
@@ -12,8 +13,8 @@ ChatGPT
 根目錄的dictionary.json 可以新增翻譯
 
 # 安裝
-
-審核完就上架到Google chrome Plugin Store
+[Google chrome Plugin Store](https://chromewebstore.google.com/detail/aronaai-translator/bdkmgaodjbbcjcbpnccbpgnhdjojknkb)
+[Firefox Browser ADD-ONS](https://addons.mozilla.org/zh-TW/firefox/search/?q=Arona.ai%20Translator)
 
 
 # Discord
