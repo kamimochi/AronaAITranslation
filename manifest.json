@@ -1,81 +1,87 @@
 {
-  "manifest_version": 3,
-  "name": "Arona.ai Translator",
-  "version": "0.0.3",
-  "description": "把Arona.ai翻譯成中文與日文",
-  "default_locale": "zh_TW",
-  "permissions": [
-    "activeTab",
-    "storage"
-  ],
-  "action": {
-    "default_popup": "popup.html"
-  },
-  "content_scripts": [
-    {
-      "matches": ["https://arona.ai/*"],
-      "js": ["content.js"],
-      "css": ["styles.css"]
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "json/dictionary.json",
-        "json/students_mapping.json",
-        "json/Event.json",
-        "json/Club.json",
-        "json/School.json",
-        "json/CharacterSSRNew.json",
-        "json/otherstu.json",
-        "json/FamilyName_mapping.json",
-        "json/Hobby_mapping.json",
-        "json/skill_name_mapping.json",
-        "json/skill_Desc_mapping.json",
-        "json/furniture_name_mapping.json",
-        "json/furniture_Desc_mapping.json",
-        "json/item_name_mapping.json",
-        "json/item_Desc_mapping.json",
-        "json/equipment_Desc_mapping.json",
-        "json/equipment_name_mapping.json",
-        "json/stages_name_mapping.json",
-        "json/stages_Event_mapping.json",
-        "json/TacticRole.json",
-        "json/ArmorType.json",
-        "json/ProfileIntroduction.json",
-        "json/WeaponNameMapping.json",
-        "json/crafting.json",
-        "JPN-json/TacticRole.json",
-        "JPN-json/ArmorType.json",
-        "JPN-json/dictionary.json",
-        "JPN-json/students_mapping.json",
-        "JPN-json/Event.json",
-        "JPN-json/Club.json",
-        "JPN-json/School.json",
-        "JPN-json/CharacterSSRNew.json",
-        "JPN-json/otherstu.json",
-        "JPN-json/FamilyName_mapping.json",
-        "JPN-json/Hobby_mapping.json",
-        "JPN-json/skill_name_mapping.json",
-        "JPN-json/skill_Desc_mapping.json",
-        "JPN-json/furniture_name_mapping.json",
-        "JPN-json/furniture_Desc_mapping.json",
-        "JPN-json/item_name_mapping.json",
-        "JPN-json/item_Desc_mapping.json",
-        "JPN-json/equipment_Desc_mapping.json",
-        "JPN-json/equipment_name_mapping.json",
-        "JPN-json/stages_name_mapping.json",
-        "JPN-json/stages_Event_mapping.json",
-        "JPN-json/TacticRole.json",
-        "JPN-json/ArmorType.json",
-        "JPN-json/ProfileIntroduction.json",
-        "JPN-json/WeaponNameMapping.json",
-        "JPN-json/crafting.json",
-        "fonts/PerfectDOSVGA437.ttf",
-        "fonts/U-OTF-ShinMGoUpr-DeBold.otf",
-        "fonts/U-OTF-ShinMGoUpr-Medium.otf"
-      ],
-      "matches": ["https://arona.ai/*"]
-    }
-  ]
+	"manifest_version": 2,
+	"name": "Arona.ai Translator",
+	"version": "0.0.3",
+	"description": "把Arona.ai翻譯成中文與日文",
+	"default_locale": "zh_TW",
+	"permissions": [
+		"activeTab",
+		"storage"
+	],
+	"browser_action": {
+		"default_popup": "popup.html"
+	},
+	"content_scripts": [
+		{
+			"matches": [
+				"https://arona.ai/*"
+			],
+			"js": [
+				"content.js"
+			],
+			"css": [
+				"styles.css"
+			]
+		}
+	],
+	"applications": {
+		"gecko": {
+			"id": "aaaa50306@gmail.com"
+		}
+	},
+	"web_accessible_resources": [
+		"json/dictionary.json",
+		"json/students_mapping.json",
+		"json/Event.json",
+		"json/Club.json",
+		"json/School.json",
+		"json/CharacterSSRNew.json",
+		"json/otherstu.json",
+		"json/FamilyName_mapping.json",
+		"json/Hobby_mapping.json",
+		"json/skill_name_mapping.json",
+		"json/skill_Desc_mapping.json",
+		"json/furniture_name_mapping.json",
+		"json/furniture_Desc_mapping.json",
+		"json/item_name_mapping.json",
+		"json/item_Desc_mapping.json",
+		"json/equipment_Desc_mapping.json",
+		"json/equipment_name_mapping.json",
+		"json/stages_name_mapping.json",
+		"json/stages_Event_mapping.json",
+		"json/TacticRole.json",
+		"json/ArmorType.json",
+		"json/ProfileIntroduction.json",
+		"json/WeaponNameMapping.json",
+		"json/crafting.json",
+		"JPN-json/TacticRole.json",
+		"JPN-json/ArmorType.json",
+		"JPN-json/dictionary.json",
+		"JPN-json/students_mapping.json",
+		"JPN-json/Event.json",
+		"JPN-json/Club.json",
+		"JPN-json/School.json",
+		"JPN-json/CharacterSSRNew.json",
+		"JPN-json/otherstu.json",
+		"JPN-json/FamilyName_mapping.json",
+		"JPN-json/Hobby_mapping.json",
+		"JPN-json/skill_name_mapping.json",
+		"JPN-json/skill_Desc_mapping.json",
+		"JPN-json/furniture_name_mapping.json",
+		"JPN-json/furniture_Desc_mapping.json",
+		"JPN-json/item_name_mapping.json",
+		"JPN-json/item_Desc_mapping.json",
+		"JPN-json/equipment_Desc_mapping.json",
+		"JPN-json/equipment_name_mapping.json",
+		"JPN-json/stages_name_mapping.json",
+		"JPN-json/stages_Event_mapping.json",
+		"JPN-json/TacticRole.json",
+		"JPN-json/ArmorType.json",
+		"JPN-json/ProfileIntroduction.json",
+		"JPN-json/WeaponNameMapping.json",
+		"JPN-json/crafting.json",
+		"fonts/PerfectDOSVGA437.ttf",
+		"fonts/U-OTF-ShinMGoUpr-DeBold.otf",
+		"fonts/U-OTF-ShinMGoUpr-Medium.otf"
+	]
 }

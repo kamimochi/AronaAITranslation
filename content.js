@@ -1,3 +1,12 @@
+/**
+ * 先定義一個全域的 browser 物件以支援 Chrome 與 Firefox。
+ * 若在 Firefox，window.browser 通常已存在；
+ * 若在 Chrome，就把 window.browser 設定為 chrome。
+ */
+if (typeof browser === 'undefined' || !browser) {
+  var browser = chrome;
+}
+
 let data = {};
 let isTranslating = false;
 let translationEnabled = false;
@@ -58,32 +67,32 @@ function loadLanguageFiles(language) {
 
   return Promise.allSettled(
     files.map(file => {
-      const url = chrome.runtime.getURL(folderPath + file);
+      const url = browser.runtime.getURL(folderPath + file);
       return fetch(url).then(res => res.json());
     })
   )
-    .then(results => {
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-          Object.assign(data, result.value);
-          console.log(`Loaded: ${files[index]}`);
-        } else {
-          console.error(`Error loading ${files[index]}:`, result.reason);
-        }
-      });
-
-      // 根據 key 長度降序排序
-      sortedDictionary = Object.entries(data).sort(([keyA], [keyB]) => keyB.length - keyA.length);
-
-      // **在這裡執行「預編譯字典」：把每個關鍵字先轉成已編譯的 RegExp**
-      compileDictionary();
-
-      jsonLoaded = true;
-      if (translationEnabled) {
-        translatePage();
+  .then(results => {
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        Object.assign(data, result.value);
+        console.log(`Loaded: ${files[index]}`);
+      } else {
+        console.error(`Error loading ${files[index]}:`, result.reason);
       }
-    })
-    .catch(err => console.error('Error loading JSON files:', err));
+    });
+
+    // 根據 key 長度降序排序
+    sortedDictionary = Object.entries(data).sort(([keyA], [keyB]) => keyB.length - keyA.length);
+
+    // **在這裡執行「預編譯字典」：把每個關鍵字先轉成已編譯的 RegExp**
+    compileDictionary();
+
+    jsonLoaded = true;
+    if (translationEnabled) {
+      translatePage();
+    }
+  })
+  .catch(err => console.error('Error loading JSON files:', err));
 }
 
 /**
@@ -220,19 +229,19 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * 接收來自 popup / background 的訊息
  */
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'enableTranslation') {
-    chrome.storage.sync.set({ translationEnabled: true }, () => {
+    browser.storage.sync.set({ translationEnabled: true }, () => {
       translationEnabled = true;
       if (jsonLoaded) translatePage();
     });
   } else if (request.action === 'disableTranslation') {
-    chrome.storage.sync.set({ translationEnabled: false }, () => {
+    browser.storage.sync.set({ translationEnabled: false }, () => {
       translationEnabled = false;
       location.reload();
     });
   } else if (request.action === 'toggleDebugMode') {
-    chrome.storage.sync.set({ debugMode: request.debugMode }, () => {
+    browser.storage.sync.set({ debugMode: request.debugMode }, () => {
       debugMode = request.debugMode;
       if (debugMode) {
         console.log("Debug Mode is ON. Printing page content...");
@@ -252,7 +261,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  * 初始化：從 storage 讀取設定 (translationEnabled、debugMode、selectedLanguage) 後，
  * 載入對應語言 JSON，最後若啟用翻譯則執行 translatePage()
  */
-chrome.storage.sync.get(["translationEnabled", "debugMode", "selectedLanguage"], (result) => {
+browser.storage.sync.get(["translationEnabled", "debugMode", "selectedLanguage"], (result) => {
   translationEnabled = !!result.translationEnabled;
   debugMode = !!result.debugMode;
   currentLanguage = result.selectedLanguage || 'zh_tw';

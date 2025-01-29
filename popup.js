@@ -4,6 +4,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const languageSelect = document.getElementById('language-select');
     const aboutBtn = document.getElementById("about-btn");
 
+
+    // Chrome/Firefox 共用的 API
+    if (typeof browser === "undefined") {
+        var browser = chrome;
+    }
+
     // 設定多語系翻譯
     function localizeUI() {
         document.querySelectorAll("[data-i18n]").forEach(elem => {
