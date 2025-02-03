@@ -26,7 +26,7 @@ For JP Discord ID: kamimochi
 
 [Arona.ai](https://arona.ai)というサイトを翻訳する拡張機能です。  
 
-Chromeの方は[こちら](https://chromewebstore.google.com/detail/aronaai-translator中文化/bdkmgaodjbbcjcbpnccbpgnhdjojknkb)、Firefoxの方は[こちら](https://addons.mozilla.org/zh-TW/firefox/addon/arona-ai-translator/)のURLより拡張機能を追加し、右上の拡張機能のアイコンをクリックし、言語設定を「日本語」に変更していただく事で日本語で使用できます。 
+Chromeの方は[こちら](https://chromewebstore.google.com/detail/aronaai-translator中文化/bdkmgaodjbbcjcbpnccbpgnhdjojknkb)、Firefoxの方は[こちら](https://addons.mozilla.org/ja/firefox/addon/arona-ai-translator/)のURLより拡張機能を追加し、右上の拡張機能のアイコンをクリックし、言語設定を「日本語」に変更していただく事で日本語で使用できます。 
 
 また完訳ではございませんので一部原文残ってしまいます。ご了承ください。
 
