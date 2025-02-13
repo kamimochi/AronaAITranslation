@@ -46,6 +46,10 @@
     "changelog_003": {
       "message": "0.0.3 重構程式，新增日文翻譯。",
       "description": "0.0.3 版本變更記錄"
+    },
+    "changelog_004": {
+      "message": "0.0.4 新增日文翻譯。",
+      "description": "0.0.4 版本變更記錄"
     }
   }
   
