@@ -8,15 +8,15 @@
     "description": "アプリの名前"
   },
   "version": {
-    "message": "バージョン: 0.0.3",
+    "message": "バージョン: 0.0.4",
     "description": "アプリのバージョン"
   },
   "author": {
-    "message": "開発者: fiseleo kamimochi。",
+    "message": "開発者: fiseleo kamimochi",
     "description": "開発者情報"
   },
   "description": {
-    "message": "Arona.ai を中国語と日本語に翻訳する。",
+    "message": "Arona.aiを中国語と日本語に翻訳するツールです。",
     "description": "機能の説明"
   },
   "contact": {
@@ -32,23 +32,27 @@
     "description": "GitHub リンク"
   },
   "skillIncomplete": {
-    "message": "現在、スキルと momotalk の個人紹介は未完成です。",
+    "message": "現在、スキルとモモトークの一部は未翻訳です。",
     "description": "機能が未完成の通知"
   },
   "changelogTitle": {
     "message": "バージョン履歴",
     "description": "変更履歴タイトル"
   },
+  "changelog_001": {
+    "message": "0.0.1 公開",
+    "description": "0.0.1 バージョン変更履歴"
+  },
   "changelog_002": {
-    "message": "0.0.2 BGMプレーヤーのラグ問題を修正。",
+    "message": "0.0.2 BGMプレーヤーのラグ問題を修正",
     "description": "0.0.2 バージョン変更履歴"
   },
   "changelog_003": {
-    "message": "0.0.3 コードをリファクタリングし、日本語翻訳を追加。",
+    "message": "0.0.3 コードをリファクタリングし、日本語翻訳を追加",
     "description": "0.0.3 バージョン変更履歴"
   },
   "changelog_004": {
-      "message": "0.0.4 日本語翻訳を追加。",
+      "message": "0.0.4 日本語翻訳を更新",
       "description": "0.0.4 版本變更記錄"
     }
 }
