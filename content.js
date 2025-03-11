@@ -1,103 +1,92 @@
-/**
- * 先定義一個全域的 browser 物件以支援 Chrome 與 Firefox。
- * 若在 Firefox，window.browser 通常已存在；
- * 若在 Chrome，就把 window.browser 設定為 chrome。
- */
+// 定義全域 browser 物件，支援 Chrome 與 Firefox
 if (typeof browser === 'undefined' || !browser) {
   var browser = chrome;
 }
 
+// 全域變數
+let translationWorker = null;
+let workerReady = false;
 let data = {};
 let isTranslating = false;
 let translationEnabled = false;
 let jsonLoaded = false;
 let debugMode = false;
-
-// 目前使用中的語言 (預設繁體中文)
-let currentLanguage = 'zh_tw';
-
-// 原本的字典 (key-value) 陣列
+let currentLanguage = 'zh_tw'; // 預設繁體中文
 let sortedDictionary = [];
-
-// 新增：把字典先「預編譯」為正則與對應替換值
 let compiledPatterns = [];
 
-/**
- * 依語言載入對應資料夾下的 JSON 檔案
- */
-function loadLanguageFiles(language) {
-  let folderPath = '';
-  if (language === 'zh_tw') {
-    folderPath = 'zh_TW-json/';
-  } else if (language === 'jpn') {
-    folderPath = 'JPN-json/';
-  } else {
-    console.warn(`No folder defined for language: ${language}`);
-    return Promise.resolve(); 
+// Worker 初始化：使用 async/await 與 Promise 化 Worker 通訊
+async function initWorker() {
+  if (typeof Worker === 'undefined') {
+    console.error('This browser does not support Web Workers.');
+    return;
   }
-
-  // 要載入的檔案清單
-  const files = [
-    'dictionary.json',
-    'students_mapping.json',
-    'Event.json',
-    'Club.json',
-    'School.json',
-    'CharacterSSRNew.json',
-    'FamilyName_mapping.json',
-    'Hobby_mapping.json',
-    'skill_name_mapping.json',
-    'skill_Desc_mapping.json',
-    'furniture_name_mapping.json',
-    'furniture_Desc_mapping.json',
-    'item_name_mapping.json',
-    'item_Desc_mapping.json',
-    'equipment_Desc_mapping.json',
-    'equipment_name_mapping.json',
-    'stages_name_mapping.json',
-    'stages_Event_mapping.json',
-    'ArmorType.json',
-    'TacticRole.json',
-    'ProfileIntroduction.json',
-    'WeaponNameMapping.json',
-    'crafting.json'
-  ];
-
-  data = {}; // 清空，避免多次切換語言詞典混雜
-
-  return Promise.allSettled(
-    files.map(file => {
-      const url = browser.runtime.getURL(folderPath + file);
-      return fetch(url).then(res => res.json());
-    })
-  )
-  .then(results => {
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        Object.assign(data, result.value);
-        console.log(`Loaded: ${files[index]}`);
-      } else {
-        console.error(`Error loading ${files[index]}:`, result.reason);
-      }
-    });
-
-    // 根據 key 長度降序排序
-    sortedDictionary = Object.entries(data).sort(([keyA], [keyB]) => keyB.length - keyA.length);
-
-    // **在這裡執行「預編譯字典」：把每個關鍵字先轉成已編譯的 RegExp**
-    compileDictionary();
-
-    jsonLoaded = true;
-    if (translationEnabled) {
-      translatePage();
-    }
-  })
-  .catch(err => console.error('Error loading JSON files:', err));
+  try {
+    const workerUrl = chrome.runtime.getURL('translationWorker.js');
+    const response = await fetch(workerUrl);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const blob = await response.blob();
+    const blobURL = URL.createObjectURL(blob);
+    translationWorker = new Worker(blobURL);
+    workerReady = true;
+    console.log('Worker loaded successfully.');
+  } catch (err) {
+    console.error('Failed to load Worker script:', err);
+  }
 }
 
-/**
- * 把 sortedDictionary 編譯成 { pattern: /.../gi, replacement: ... }
- */
+// Promise 化的 Worker 通訊
+function sendTranslationRequest(texts, patterns) {
+  return new Promise((resolve) => {
+    const handler = function(e) {
+      translationWorker.removeEventListener('message', handler);
+      resolve(e.data);
+    };
+    translationWorker.addEventListener('message', handler);
+    translationWorker.postMessage({ texts, patterns });
+  });
+}
+
+// 使用 async/await 改寫翻譯函數
+async function translateTextNodesInElement(node, callback) {
+  const textNodes = [];
+  collectTextNodes(node, textNodes);
+  if (textNodes.length > 0) {
+    if (!workerReady) {
+      console.warn('Worker not ready yet!');
+      return callback();
+    }
+    const texts = textNodes.map(n => n.textContent);
+    const patterns = compiledPatterns.map(p => ({ pattern: p.pattern.source, replacement: p.replacement }));
+    try {
+      const translatedTexts = await sendTranslationRequest(texts, patterns);
+      textNodes.forEach((node, index) => {
+        if (translatedTexts[index] !== node.textContent) {
+          node.textContent = translatedTexts[index];
+        }
+      });
+    } catch (err) {
+      console.error('Translation error:', err);
+    }
+    callback();
+  } else {
+    callback();
+  }
+}
+
+// 收集文字節點
+function collectTextNodes(node, textNodes) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    const trimmed = node.textContent.trim();
+    if (trimmed.length > 0) textNodes.push(node);
+    return;
+  }
+  if (node.nodeType === Node.ELEMENT_NODE && !skipSelector.some(selector => node.matches(selector))) {
+    node.childNodes.forEach(child => collectTextNodes(child, textNodes));
+  }
+}
+
+// 預編譯字典
 function compileDictionary() {
   compiledPatterns = sortedDictionary.map(([koreanWord, chineseWord]) => {
     const pattern = new RegExp(escapeRegExp(koreanWord), 'gi');
@@ -105,76 +94,66 @@ function compileDictionary() {
   });
 }
 
-/**
- * 文字節點翻譯：使用「預編譯」的 pattern 逐一替換
- * 只在翻譯後結果與原文不同時，才寫回
- */
-function translateString(originalText) {
-  let translatedText = originalText;
-  for (const { pattern, replacement } of compiledPatterns) {
-    translatedText = translatedText.replace(pattern, replacement);
-  }
-  return translatedText;
-}
-
-/**
- * 跳過翻譯的元素選擇器
- */
-const skipSelector = [
-  'script',
-  'style',
-  'input',
-  'select',
-  'textarea',
-  '.no-translate'
-];
-
-/**
- * 遞迴翻譯元素下所有子節點
- */
-function translateTextNodesInElement(node) {
-  if (node.nodeType === Node.TEXT_NODE) {
-    const original = node.textContent;
-    const trimmed = original.trim();
-    if (trimmed.length > 0) {
-      const newText = translateString(original);
-      if (newText !== original) {
-        node.textContent = newText;
-      }
-    }
+// 載入 JSON 檔案，使用 async/await 提升可讀性
+async function loadLanguageFiles(language) {
+  let folderPath = language === 'zh_tw' ? 'zh_TW-json/' : language === 'jpn' ? 'JPN-json/' : '';
+  if (!folderPath) {
+    console.warn(`No folder defined for language: ${language}`);
     return;
   }
-  if (node.nodeType === Node.ELEMENT_NODE) {
-    // 符合 skipSelector 就整塊跳過
-    if (skipSelector.some(selector => node.matches(selector))) {
-      return;
+  const files = [
+    'dictionary.json', 'students_mapping.json', 'Event.json', 'Club.json', 'School.json',
+    'CharacterSSRNew.json', 'FamilyName_mapping.json', 'Hobby_mapping.json', 'skill_name_mapping.json',
+    'skill_Desc_mapping.json', 'furniture_name_mapping.json', 'furniture_Desc_mapping.json',
+    'item_name_mapping.json', 'item_Desc_mapping.json', 'equipment_Desc_mapping.json',
+    'equipment_name_mapping.json', 'stages_name_mapping.json', 'stages_Event_mapping.json',
+    'ArmorType.json', 'TacticRole.json', 'ProfileIntroduction.json', 'WeaponNameMapping.json',
+    'crafting.json'
+  ];
+  data = {};
+  const promises = files.map(file => {
+    const url = browser.runtime.getURL(folderPath + file);
+    return fetch(url).then(res => res.json());
+  });
+  const results = await Promise.allSettled(promises);
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      Object.assign(data, result.value);
+      console.log(`Loaded: ${files[index]}`);
+    } else {
+      console.error(`Error loading ${files[index]}:`, result.reason);
     }
-    node.childNodes.forEach(child => translateTextNodesInElement(child));
-  }
+  });
+  sortedDictionary = Object.entries(data).sort(([keyA], [keyB]) => keyB.length - keyA.length);
+  compileDictionary();
+  jsonLoaded = true;
+  if (translationEnabled) translatePage();
 }
 
-/**
- * 整頁翻譯
- */
+// Debounce 工具函數
+function debounce(func, delay) {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), delay);
+  };
+}
+
+// 其他功能保持不變
+const skipSelector = ['script', 'style', 'input', 'select', 'textarea', '.no-translate'];
+
 function translatePage() {
   if (!translationEnabled || isTranslating) return;
   isTranslating = true;
-
-  translateTextNodesInElement(document.body);
-
-  isTranslating = false;
+  translateTextNodesInElement(document.body, () => {
+    isTranslating = false;
+  });
 }
 
-/**
- * 用於在正則中逃脫特殊字元
- */
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/**
- * Debug: 印出頁面文字
- */
 function printPageContent() {
   document.body.querySelectorAll('*:not(script):not(style)').forEach(element => {
     if (element.children.length === 0 && element.innerHTML.trim() !== '') {
@@ -183,52 +162,22 @@ function printPageContent() {
   });
 }
 
-/**
- * 避免 Mutation 多次頻繁觸發：用簡易 Debounce
- */
-let mutationTimer = null;
-const DEBOUNCE_DELAY = 100;
-
-const observerConfig = {
-  childList: true,
-  subtree: true,
-  characterData: true,
-  characterDataOldValue: true
-};
-
+// MutationObserver 使用 debounce 包裝
+const debouncedTranslate = debounce(translatePage, 100);
+const observerConfig = { childList: true, subtree: true, characterData: true, characterDataOldValue: true };
 const globalObserver = new MutationObserver(() => {
   if (!translationEnabled) return;
   if (debugMode) {
     console.log("Debug: DOM mutation observed. Printing updated page content.");
     printPageContent();
   }
-
-  // 先斷開觀察
   globalObserver.disconnect();
-
-  // 100ms 內若還有新 Mutation，就清除再重設
-  clearTimeout(mutationTimer);
-  mutationTimer = setTimeout(() => {
-    translatePage();
-    globalObserver.observe(document.body, observerConfig);
-  }, DEBOUNCE_DELAY);
+  debouncedTranslate();
+  globalObserver.observe(document.body, observerConfig);
 });
-
-// 啟用 Observer
 globalObserver.observe(document.body, observerConfig);
 
-/**
- * DOMContentLoaded：若字典已載入 & 翻譯已啟用，就翻譯
- */
-document.addEventListener('DOMContentLoaded', () => {
-  if (jsonLoaded && translationEnabled) {
-    translatePage();
-  }
-});
-
-/**
- * 接收來自 popup / background 的訊息
- */
+// 接收來自 popup / background 的訊息
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'enableTranslation') {
     browser.storage.sync.set({ translationEnabled: true }, () => {
@@ -243,12 +192,8 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === 'toggleDebugMode') {
     browser.storage.sync.set({ debugMode: request.debugMode }, () => {
       debugMode = request.debugMode;
-      if (debugMode) {
-        console.log("Debug Mode is ON. Printing page content...");
-        printPageContent();
-      } else {
-        console.log("Debug Mode is OFF.");
-      }
+      console.log(debugMode ? "Debug Mode is ON." : "Debug Mode is OFF.");
+      if (debugMode) printPageContent();
     });
   } else if (request.action === 'setLanguage') {
     currentLanguage = request.language;
@@ -257,23 +202,16 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-/**
- * 初始化：從 storage 讀取設定 (translationEnabled、debugMode、selectedLanguage) 後，
- * 載入對應語言 JSON，最後若啟用翻譯則執行 translatePage()
- */
+// 初始化：讀取 storage 設定與 JSON 檔案，同時初始化 Worker
 browser.storage.sync.get(["translationEnabled", "debugMode", "selectedLanguage"], (result) => {
   translationEnabled = !!result.translationEnabled;
   debugMode = !!result.debugMode;
   currentLanguage = result.selectedLanguage || 'zh_tw';
+  loadLanguageFiles(currentLanguage);
+  if (debugMode) console.log("Debug Mode is enabled.");
+});
 
-  // 載入對應語言的 JSON
-  loadLanguageFiles(currentLanguage).then(() => {
-    if (translationEnabled) {
-      translatePage();
-    }
-  });
-
-  if (debugMode) {
-    console.log("Debug Mode is enabled. Logging page content updates.");
-  }
+initWorker();
+document.addEventListener('DOMContentLoaded', () => {
+  if (jsonLoaded && translationEnabled) translatePage();
 });

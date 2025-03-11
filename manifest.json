@@ -32,6 +32,7 @@
 	"web_accessible_resources": [
 		{
 			"resources": [
+				"translationWorker.js",
 				"zh_TW-json/dictionary.json",
 				"zh_TW-json/students_mapping.json",
 				"zh_TW-json/Event.json",
