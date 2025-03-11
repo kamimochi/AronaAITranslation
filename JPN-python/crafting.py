@@ -11,6 +11,8 @@ for node in url_data.get("Nodes", []):
     name_kr = node.get("NameKr")  # 預設為空字串
     result[name_kr] =  ""  # 確保輸出空字串
 
+result["/"] = ""
+
 # 輸出為新的 JSON 檔案
 output_path = 'crafting.json'
 with open(output_path, 'w', encoding='utf-8') as output_file:

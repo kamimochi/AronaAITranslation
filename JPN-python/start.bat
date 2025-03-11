@@ -1,10 +1,9 @@
 @echo off
 
-
-:: 切换到脚本所在的目录
+:: 切換到 start.bat 所在的資料夾 (即 python 資料夾)
 cd /d "%~dp0"
 
-:: 执行所有 Python 脚本
+:: 執行所有 Python 腳本
 py CharacterSSRNew.py
 py equipment.py
 py equipmentDesc.py
@@ -27,5 +26,14 @@ py Event.py
 py ProfileIntroductionStu.py
 py WeaponName.py
 py crafting.py
+
+:: 如果沒有上層的 json 資料夾，就自動建立一個
+if not exist "..\JPN-json" (
+    mkdir "..\JPN-json"
+)
+
+:: 將所有 .json 檔案複製到上層的 json 資料夾 (/y 代表自動覆蓋)
+xcopy /y *.json ..\JPN-json\
+del *.json
 echo All Python scripts have been executed.
 pause

@@ -28,7 +28,7 @@ let compiledPatterns = [];
 function loadLanguageFiles(language) {
   let folderPath = '';
   if (language === 'zh_tw') {
-    folderPath = 'json/';
+    folderPath = 'zh_TW-json/';
   } else if (language === 'jpn') {
     folderPath = 'JPN-json/';
   } else {

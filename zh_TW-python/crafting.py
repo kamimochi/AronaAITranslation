@@ -13,16 +13,18 @@ for node in url_data.get("Nodes", []):
     name_tw = node.get("NameTw", "")
     name_jp = node.get("NameJp", "")  # 預設為空字串
 
-    
-    # 使用 NameKr 和 NameJp 組合作為鍵，NameTw 作為值
-    key = f"{name_kr}"
-    result[key] = name_tw
-    
-    result[name_jp] =  ""  # 確保輸出空字串
+    # 當 NameJp 和 NameTw 一樣時，對應的 NameKr 設為空字串，否則保留 NameTw 的值
+    if name_jp == name_tw:
+        result[name_kr] = ""
+    else:
+        result[name_kr] = name_tw
+        # 將 NameJp 的鍵對應空字串
+        result[name_jp] = ""
 
-
     
 
+# 加入 "/" : ""
+result["/"] = ""
 
 # 輸出為新的 JSON 檔案
 output_path = 'crafting.json'
