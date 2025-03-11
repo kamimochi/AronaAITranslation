@@ -1,3 +1,5 @@
+// content.js
+
 // 定義全域 browser 物件，支援 Chrome 與 Firefox
 if (typeof browser === 'undefined' || !browser) {
   var browser = chrome;
@@ -15,7 +17,7 @@ let currentLanguage = 'zh_tw'; // 預設繁體中文
 let sortedDictionary = [];
 let compiledPatterns = [];
 
-// Worker 初始化：使用 async/await 與 Promise 化 Worker 通訊
+// 初始化 Worker，使用 async/await 與 Blob URL 載入 Worker
 async function initWorker() {
   if (typeof Worker === 'undefined') {
     console.error('This browser does not support Web Workers.');
@@ -57,7 +59,11 @@ async function translateTextNodesInElement(node, callback) {
       return callback();
     }
     const texts = textNodes.map(n => n.textContent);
-    const patterns = compiledPatterns.map(p => ({ pattern: p.pattern.source, replacement: p.replacement }));
+    // 傳送給 Worker 的 patterns 改成包含 { pattern, replacement } 物件
+    const patterns = compiledPatterns.map(p => ({
+      pattern: p.pattern.source,
+      replacement: p.replacement
+    }));
     try {
       const translatedTexts = await sendTranslationRequest(texts, patterns);
       textNodes.forEach((node, index) => {
@@ -74,7 +80,7 @@ async function translateTextNodesInElement(node, callback) {
   }
 }
 
-// 收集文字節點
+// 收集文字節點（跳過部分元素）
 function collectTextNodes(node, textNodes) {
   if (node.nodeType === Node.TEXT_NODE) {
     const trimmed = node.textContent.trim();
@@ -86,7 +92,7 @@ function collectTextNodes(node, textNodes) {
   }
 }
 
-// 預編譯字典
+// 預編譯字典，將 sortedDictionary 轉換為包含正則與替換值的結構
 function compileDictionary() {
   compiledPatterns = sortedDictionary.map(([koreanWord, chineseWord]) => {
     const pattern = new RegExp(escapeRegExp(koreanWord), 'gi');
@@ -94,7 +100,7 @@ function compileDictionary() {
   });
 }
 
-// 載入 JSON 檔案，使用 async/await 提升可讀性
+// 載入 JSON 檔案並建立字典
 async function loadLanguageFiles(language) {
   let folderPath = language === 'zh_tw' ? 'zh_TW-json/' : language === 'jpn' ? 'JPN-json/' : '';
   if (!folderPath) {
@@ -130,7 +136,7 @@ async function loadLanguageFiles(language) {
   if (translationEnabled) translatePage();
 }
 
-// Debounce 工具函數
+// 簡單 debounce 函式
 function debounce(func, delay) {
   let timeout;
   return (...args) => {
@@ -139,7 +145,6 @@ function debounce(func, delay) {
   };
 }
 
-// 其他功能保持不變
 const skipSelector = ['script', 'style', 'input', 'select', 'textarea', '.no-translate'];
 
 function translatePage() {
@@ -162,7 +167,6 @@ function printPageContent() {
   });
 }
 
-// MutationObserver 使用 debounce 包裝
 const debouncedTranslate = debounce(translatePage, 100);
 const observerConfig = { childList: true, subtree: true, characterData: true, characterDataOldValue: true };
 const globalObserver = new MutationObserver(() => {
@@ -177,7 +181,7 @@ const globalObserver = new MutationObserver(() => {
 });
 globalObserver.observe(document.body, observerConfig);
 
-// 接收來自 popup / background 的訊息
+// 接收 popup / background 訊息
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'enableTranslation') {
     browser.storage.sync.set({ translationEnabled: true }, () => {
@@ -202,7 +206,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// 初始化：讀取 storage 設定與 JSON 檔案，同時初始化 Worker
+// 初始化：讀取 storage 設定、載入 JSON 字典，並初始化 Worker
 browser.storage.sync.get(["translationEnabled", "debugMode", "selectedLanguage"], (result) => {
   translationEnabled = !!result.translationEnabled;
   debugMode = !!result.debugMode;
