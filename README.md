@@ -22,6 +22,15 @@ ChatGPT
 我的Discord ID : afiseleo789  
 For JP Discord ID: kamimochi
 
+# 翻譯人員招募
+
+我們正在尋找有熱情且具有翻譯能力的夥伴，一同參與 Arona.ai 的翻譯計劃。  
+如果你有興趣協助翻譯或優化現有翻譯內容，歡迎聯絡我們：  
+- 中文聯絡：Discord ID "afiseleo789"  
+- 日文聯絡：Discord ID "kamimochi"
+
+你的加入將幫助我們讓這個擴充功能更加完善，期待你的參與！
+
 # 日本の方へ
 
 [Arona.ai](https://arona.ai)というサイトを翻訳する拡張機能です。  
