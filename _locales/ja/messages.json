@@ -8,7 +8,7 @@
     "description": "アプリの名前"
   },
   "version": {
-    "message": "バージョン: 0.0.3",
+    "message": "バージョン: 0.0.5",
     "description": "アプリのバージョン"
   },
   "author": {
