@@ -51,8 +51,16 @@
     "message": "0.0.4 日本語翻訳を追加。",
     "description": "0.0.4 版本變更記錄"
   },
+  "changelog_005": {
+    "message": "0.0.5 翻訳を追加し、翻訳効率を向上。",
+    "description": "0.0.5 バージョン変更履歴"
+  },
   "extName": { "message": "テキスト翻訳" },
   "toggleTranslation": { "message": "翻訳を有効にする" },
   "toggleDebug": { "message": "デバッグモード" },
-  "about": { "message": "私について" }
+  "about": { "message": "私について" },
+  "alertMessage": {
+    "message": "Google 翻訳を閉じてください(右上の拡張機能管理でこのメッセージを閉じることができます)。"
+  },
+  "toggleAlert": { "message": "アラートを有効にする" } 
 }

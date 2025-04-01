@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const isEnabled = toggleTranslation.checked;
         chrome.storage.sync.set({ translationEnabled: isEnabled });
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            chrome.tabs.sendMessage(tabs[0].id, { 
+            chrome.tabs.sendMessage(tabs[0].id, {
                 action: isEnabled ? 'enableTranslation' : 'disableTranslation'
             });
         });
@@ -47,9 +47,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const isDebugEnabled = toggleDebug.checked;
         chrome.storage.sync.set({ debugMode: isDebugEnabled });
         chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-            chrome.tabs.sendMessage(tabs[0].id, { 
-                action: 'toggleDebugMode', 
-                debugMode: isDebugEnabled 
+            chrome.tabs.sendMessage(tabs[0].id, {
+                action: 'toggleDebugMode',
+                debugMode: isDebugEnabled
             });
         });
     });
@@ -61,9 +61,9 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log(`Popup: Language switched to: ${selectedLanguage}`);
             // 發送給 content.js 讓它重新載入對應檔案
             chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                chrome.tabs.sendMessage(tabs[0].id, { 
-                    action: "setLanguage", 
-                    language: selectedLanguage 
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    action: "setLanguage",
+                    language: selectedLanguage
                 });
             });
         });
@@ -73,4 +73,18 @@ document.addEventListener('DOMContentLoaded', function () {
     aboutBtn.addEventListener('click', function () {
         window.open('about.html', '關於我', 'width=400,height=300');
     });
+    // 取得關閉 alert 的 checkbox
+    const toggleAlert = document.getElementById('toggle-alert');
+
+    // 從 storage 載入 alert 設定，預設 alert 顯示（disableAlert 為 false）
+    chrome.storage.sync.get(["disableAlert"], (result) => {
+        toggleAlert.checked = !!result.disableAlert;
+    });
+
+    // 監聽 checkbox 狀態改變，儲存設定
+    toggleAlert.addEventListener('change', function () {
+        const disable = toggleAlert.checked;
+        chrome.storage.sync.set({ disableAlert: disable });
+    });
+
 });

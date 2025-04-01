@@ -51,9 +51,19 @@
     "message": "0.0.4 新增日文翻譯。",
     "description": "0.0.4 版本變更記錄"
   },
+  "changelog_005": {
+    "message": "0.0.5 新增翻譯，優化翻譯效率。",
+    "description": "0.0.5 版本變更記錄"
+  },
   "extName": { "message": "文字翻譯器" },
   "toggleTranslation": { "message": "啟用翻譯" },
   "toggleDebug": { "message": "Debug 模式" },
-  "about": { "message": "關於我" }
+  "about": { "message": "關於我" },
+  "alertMessage": {
+    "message": "請把Google翻譯關閉(可以在右上角的擴充功能管理裡面關閉此訊息)。"
+  },
+  "toggleAlert": {
+    "message": "關閉彈跳視窗"
+  }
 }
   

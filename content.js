@@ -5,6 +5,23 @@ if (typeof browser === 'undefined' || !browser) {
   var browser = chrome;
 }
 
+// 如果目前網站為 arona.ai，則執行下列設定
+if (window.location.hostname === "arona.ai") {
+  // 插入 meta 標籤來停用 Google Translate
+  var meta = document.createElement("meta");
+  meta.name = "google";
+  meta.content = "notranslate";
+  document.head.appendChild(meta);
+
+  // 讀取使用者設定，預設不關閉 alert
+  chrome.storage.sync.get(["disableAlert"], function(result) {
+    if (!result.disableAlert) {
+      // 使用 i18n 取得警告訊息
+      alert(chrome.i18n.getMessage("alertMessage"));
+    }
+  });
+}
+
 // 全域變數
 let translationWorker = null;
 let workerReady = false;
@@ -48,6 +65,57 @@ function sendTranslationRequest(texts, patterns) {
     translationWorker.postMessage({ texts, patterns });
   });
 }
+
+function mergeAdjacentRubyNodes() {
+  // 取得所有 <ruby> 節點
+  const rubyNodes = document.querySelectorAll('ruby');
+  const processed = new Set();
+  
+  rubyNodes.forEach(ruby => {
+    if (processed.has(ruby)) return;
+    
+    // 初始化分組：至少包含目前這個 <ruby>
+    let group = [ruby];
+    let next = ruby.nextSibling;
+    
+    // 略過中間只包含空白的 Text Node
+    while (next && next.nodeType === Node.TEXT_NODE && next.textContent.trim() === "") {
+      next = next.nextSibling;
+    }
+    
+    // 收集後續連續的 <ruby> 節點
+    while (next && next.nodeType === Node.ELEMENT_NODE && next.tagName === "RUBY") {
+      group.push(next);
+      processed.add(next);
+      next = next.nextSibling;
+      while (next && next.nodeType === Node.TEXT_NODE && next.textContent.trim() === "") {
+        next = next.nextSibling;
+      }
+    }
+    
+    // 如果有兩個以上相鄰的 <ruby> 節點，嘗試合併文字比對字典
+    if (group.length > 1) {
+      // 合併各個 <ruby> 的文字，並以空白分隔（例："쇼쿠호 미사키"）
+      let combinedText = group.map(node => node.textContent.trim()).join(" ");
+      
+      // 在排序後的字典中找出是否有完全匹配的長字串
+      let translationEntry = sortedDictionary.find(([key, value]) => key === combinedText);
+      if (translationEntry) {
+        let translatedText = translationEntry[1];
+        // 建立一個新的 <ruby> 節點以呈現翻譯結果
+        let newNode = document.createElement('ruby');
+        newNode.textContent = translatedText;
+        // 將第一個 <ruby> 節點前插入新的節點，再移除原本的分組節點
+        let firstRuby = group[0];
+        firstRuby.parentNode.insertBefore(newNode, firstRuby);
+        group.forEach(node => {
+          node.parentNode.removeChild(node);
+        });
+      }
+    }
+  });
+}
+
 
 // 使用 async/await 改寫翻譯函數
 async function translateTextNodesInElement(node, callback) {
@@ -150,6 +218,8 @@ const skipSelector = ['script', 'style', 'input', 'select', 'textarea', '.no-tra
 function translatePage() {
   if (!translationEnabled || isTranslating) return;
   isTranslating = true;
+  // 先檢查合併相鄰的 <ruby> 節點
+  mergeAdjacentRubyNodes();
   translateTextNodesInElement(document.body, () => {
     isTranslating = false;
   });
