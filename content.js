@@ -220,10 +220,89 @@ function translatePage() {
   isTranslating = true;
   // 先檢查合併相鄰的 <ruby> 節點
   mergeAdjacentRubyNodes();
+  mergeAdjacentSpanNodes();
+  // 然後檢查合併相鄰的 <span> 節點
   translateTextNodesInElement(document.body, () => {
     isTranslating = false;
   });
 }
+
+// 定義 normalization 函式，標準化空白與斜線格式
+// 定義 normalization 函式，標準化空白、斜線以及括號內的空白
+function normalizeText(text) {
+  // 先合併所有空白為單一空格，並統一斜線周圍的空白
+  let normalized = text
+    .replace(/\s+/g, " ")
+    .replace(/\s*\/\s*/g, "/")
+    .trim();
+  // 對括號內的文字作進一步處理，將括號內所有空白移除
+  normalized = normalized.replace(/\(([^)]+)\)/g, (match, inner) => {
+    return "(" + inner.replace(/\s+/g, "") + ")";
+  });
+  return normalized;
+}
+
+function mergeAdjacentSpanNodes() {
+  // 將所有 <span> 節點轉成陣列
+  const spanNodes = Array.from(document.querySelectorAll('span'));
+  const processed = new Set();
+
+  spanNodes.forEach(span => {
+    if (processed.has(span)) return;
+
+    let group = [];
+    let current = span;
+    // 收集連續的 <span> 節點（略過空白節點）
+    while (current && current.nodeType === Node.ELEMENT_NODE && current.tagName === "SPAN") {
+      if (current.textContent.trim() !== "") {
+        group.push(current);
+      }
+      processed.add(current);
+      current = current.nextSibling;
+      while (current && current.nodeType === Node.TEXT_NODE && current.textContent.trim() === "") {
+        current = current.nextSibling;
+      }
+    }
+
+    if (group.length > 1) {
+      // 輸出調試資訊，查看每個 <span> 的原始文字
+      console.log("Merging the following spans:");
+      group.forEach(node => console.log(`[${node.textContent.trim()}]`));
+
+      // 合併所有節點的文字，中間用單一空格隔開，並標準化空白
+      let combinedText = group.map(node => node.textContent.trim()).join(" ");
+      combinedText = combinedText.replace(/\s+/g, " ");
+      
+      // 正規化合併後的文字（例如將 "대미지 대상이" 轉為 "대미지/대상이"）
+      let normalizedCombined = normalizeText(combinedText);
+      console.log("Normalized combined text after merge:", normalizedCombined);
+
+      // 用正規化後的文本與字典中的條目作比對
+      let translationEntry = sortedDictionary.find(([key]) => normalizeText(key) === normalizedCombined);
+      if (translationEntry) {
+        let translatedText = translationEntry[1];
+        console.log("Found translation entry:", translatedText);
+
+        // 建立新 <span>，置入翻譯結果，並替換原有群組
+        let newSpan = document.createElement('span');
+        newSpan.textContent = translatedText;
+
+        let firstSpan = group[0];
+        firstSpan.parentNode.insertBefore(newSpan, firstSpan);
+        group.forEach(node => {
+          node.parentNode.removeChild(node);
+        });
+      } else {
+        console.log("No translation entry found for normalized combined text:", normalizedCombined);
+      }
+    }
+  });
+}
+
+
+
+
+
 
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
