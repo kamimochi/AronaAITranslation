@@ -109,53 +109,75 @@ function mergeAdjacentRubyNodes() {
         let firstRuby = group[0];
         firstRuby.parentNode.insertBefore(newNode, firstRuby);
         group.forEach(node => {
-          node.parentNode.removeChild(node);
+          if (node.parentNode && node.parentNode.contains(node)) {
+            node.parentNode.removeChild(node);
+          }
         });
       }
     }
   });
 }
 
-
-// 使用 async/await 改寫翻譯函數
 async function translateTextNodesInElement(node, callback) {
   const textNodes = [];
   collectTextNodes(node, textNodes);
-  if (textNodes.length > 0) {
-    if (!workerReady) {
-      console.warn('Worker not ready yet!');
-      return callback();
-    }
-    const texts = textNodes.map(n => n.textContent);
-    // 傳送給 Worker 的 patterns 改成包含 { pattern, replacement } 物件
-    const patterns = compiledPatterns.map(p => ({
-      pattern: p.pattern.source,
-      replacement: p.replacement
-    }));
-    try {
-      const translatedTexts = await sendTranslationRequest(texts, patterns);
-      textNodes.forEach((node, index) => {
-        if (translatedTexts[index] !== node.textContent) {
-          node.textContent = translatedTexts[index];
-        }
-      });
-    } catch (err) {
-      console.error('Translation error:', err);
-    }
-    callback();
-  } else {
-    callback();
+  if (textNodes.length === 0) return callback();
+
+  if (!workerReady) {
+    console.warn('Worker not ready yet!');
+    return callback();
   }
+
+  const patterns = compiledPatterns.map(p => ({
+    pattern: p.pattern.source,
+    replacement: p.replacement
+  }));
+  
+  // 向 Worker 请求翻译
+  let translatedTexts;
+  try {
+    translatedTexts = await sendTranslationRequest(
+      textNodes.map(n => n.textContent),
+      patterns
+    );
+  } catch (err) {
+    console.error('Translation error:', err);
+    return callback();
+  }
+
+  // 用来在翻译后给「百分比粘连」补斜线
+  const percentGapRe = /(\d+(?:\.\d+)?%)\s*(?=\d+(?:\.\d+)?%)/g;
+
+  // 写回 DOM 时做后处理
+  textNodes.forEach((node, i) => {
+    let newText = translatedTexts[i];
+    // 如果有「14%14.7%」这种，就改成「14%/14.7%」
+    newText = newText.replace(percentGapRe, '$1/');
+    if (newText !== node.textContent) {
+      node.textContent = newText;
+    }
+  });
+
+  callback();
 }
+
 
 // 收集文字節點（跳過部分元素）
 function collectTextNodes(node, textNodes) {
+  const numericSlashRe = /^[0-9.%\/]+$/;
+
   if (node.nodeType === Node.TEXT_NODE) {
     const trimmed = node.textContent.trim();
-    if (trimmed.length > 0) textNodes.push(node);
+    // 非空，又不是全由數字 . % / 組成，才收進 textNodes
+    if (trimmed.length > 0 && !numericSlashRe.test(trimmed)) {
+      textNodes.push(node);
+    }
     return;
   }
-  if (node.nodeType === Node.ELEMENT_NODE && !skipSelector.some(selector => node.matches(selector))) {
+  if (
+    node.nodeType === Node.ELEMENT_NODE &&
+    !skipSelector.some(selector => node.matches(selector))
+  ) {
     node.childNodes.forEach(child => collectTextNodes(child, textNodes));
   }
 }
@@ -213,7 +235,15 @@ function debounce(func, delay) {
   };
 }
 
-const skipSelector = ['script', 'style', 'input', 'select', 'textarea', '.no-translate'];
+// 在 content.js 開頭，把 skipSelector 改成：
+const skipSelector = [
+  'script', 'style', 'input', 'select', 'textarea', '.no-translate',
+  '.MuiSlider-markLabel',  // 跳過刻度文字
+  '.MuiSlider-thumb',      // 跳過拖把
+  '.MuiSlider-track',
+  '.MuiSlider-rail'
+];
+// 這些元素不需要翻譯
 
 function translatePage() {
   if (!translationEnabled || isTranslating) return;
@@ -227,81 +257,85 @@ function translatePage() {
   });
 }
 
-// 定義 normalization 函式，標準化空白與斜線格式
-// 定義 normalization 函式，標準化空白、斜線以及括號內的空白
+
+
 function normalizeText(text) {
-  // 先合併所有空白為單一空格，並統一斜線周圍的空白
   let normalized = text
     .replace(/\s+/g, " ")
     .replace(/\s*\/\s*/g, "/")
     .trim();
-  // 對括號內的文字作進一步處理，將括號內所有空白移除
-  normalized = normalized.replace(/\(([^)]+)\)/g, (match, inner) => {
+  normalized = normalized.replace(/\(([^)]+)\)/g, (_, inner) => {
     return "(" + inner.replace(/\s+/g, "") + ")";
   });
   return normalized;
 }
 
 function mergeAdjacentSpanNodes() {
-  // 將所有 <span> 節點轉成陣列
   const spanNodes = Array.from(document.querySelectorAll('span'));
   const processed = new Set();
+  const numericSlashRe = /^[0-9.%\/]+$/;
 
   spanNodes.forEach(span => {
     if (processed.has(span)) return;
 
+    // 1) 收集一组相邻且非空白的 span
     let group = [];
-    let current = span;
-    // 收集連續的 <span> 節點（略過空白節點）
-    while (current && current.nodeType === Node.ELEMENT_NODE && current.tagName === "SPAN") {
-      if (current.textContent.trim() !== "") {
-        group.push(current);
-      }
-      processed.add(current);
-      current = current.nextSibling;
-      while (current && current.nodeType === Node.TEXT_NODE && current.textContent.trim() === "") {
-        current = current.nextSibling;
-      }
-    }
-
-    if (group.length > 1) {
-      // 輸出調試資訊，查看每個 <span> 的原始文字
-      console.log("Merging the following spans:");
-      group.forEach(node => console.log(`[${node.textContent.trim()}]`));
-
-      // 合併所有節點的文字，中間用單一空格隔開，並標準化空白
-      let combinedText = group.map(node => node.textContent.trim()).join(" ");
-      combinedText = combinedText.replace(/\s+/g, " ");
-      
-      // 正規化合併後的文字（例如將 "대미지 대상이" 轉為 "대미지/대상이"）
-      let normalizedCombined = normalizeText(combinedText);
-      console.log("Normalized combined text after merge:", normalizedCombined);
-
-      // 用正規化後的文本與字典中的條目作比對
-      let translationEntry = sortedDictionary.find(([key]) => normalizeText(key) === normalizedCombined);
-      if (translationEntry) {
-        let translatedText = translationEntry[1];
-        console.log("Found translation entry:", translatedText);
-
-        // 建立新 <span>，置入翻譯結果，並替換原有群組
-        let newSpan = document.createElement('span');
-        newSpan.textContent = translatedText;
-
-        let firstSpan = group[0];
-        firstSpan.parentNode.insertBefore(newSpan, firstSpan);
-        group.forEach(node => {
-          node.parentNode.removeChild(node);
-        });
-      } else {
-        console.log("No translation entry found for normalized combined text:", normalizedCombined);
+    let curr = span;
+    while (
+      curr &&
+      curr.nodeType === Node.ELEMENT_NODE &&
+      curr.tagName === "SPAN"
+    ) {
+      const txt = curr.textContent.trim();
+      if (txt) group.push(curr);
+      processed.add(curr);
+      curr = curr.nextSibling;
+      while (
+        curr &&
+        curr.nodeType === Node.TEXT_NODE &&
+        curr.textContent.trim() === ""
+      ) {
+        curr = curr.nextSibling;
       }
     }
+
+    // 2) 如果只有一个，或全是数字，就不处理
+    if (group.length < 2 || group.every(n => numericSlashRe.test(n.textContent.trim()))) {
+      // 只要整个 group 里每个 span 文本都是数字、点、%或 /，
+      // 就认定它是一个数值序列，原样保留，不要再合并到韩文里
+      return;
+    }
+
+    // 3) 合并成一句韩文
+    let merged = group.map(n => n.textContent).join("");
+    merged = merged.replace(/\s+/g, " ").trim();
+
+    // 4) 标准化后拿去字典里查
+    const norm = normalizeText(merged);
+    const noSlash = norm.replace(/\//g, "");
+    const entry = sortedDictionary.find(([key]) => {
+      const kNorm = normalizeText(key);
+      return kNorm === norm || kNorm.replace(/\//g, "") === noSlash;
+    });
+
+    
+    if (!entry) {
+      return;
+    }
+
+  
+    const newSpan = document.createElement("span");
+    newSpan.textContent = merged;
+
+    const first = group[0];
+    first.parentNode.insertBefore(newSpan, first);
+    group.forEach(n => {
+      if (n.parentNode && n.parentNode.contains(n)) {
+        n.parentNode.removeChild(n);
+      }
+    });
   });
 }
-
-
-
-
 
 
 function escapeRegExp(string) {
@@ -368,3 +402,4 @@ initWorker();
 document.addEventListener('DOMContentLoaded', () => {
   if (jsonLoaded && translationEnabled) translatePage();
 });
+
