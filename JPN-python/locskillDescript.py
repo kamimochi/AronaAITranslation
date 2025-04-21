@@ -2,7 +2,7 @@ import requests
 import json
 import re
 
-url = "https://raw.githubusercontent.com/electricgoat/ba-data/refs/heads/global/DB/LocalizeSkillExcelTable.json"
+url = "https://raw.githubusercontent.com/electricgoat/ba-data/refs/heads/jp/DB/LocalizeSkillExcelTable.json"
 response = requests.get(url)
 data = response.json()
 
@@ -20,11 +20,11 @@ def build_mapping(data: dict) -> dict:
     mapping = {}
     for item in data.get("DataList", []):
         kr = item.get("DescriptionKr", "")
-        tw = item.get("DescriptionTw", "")
-        if kr and tw:
+        Jp = item.get("DescriptionJp", "")
+        if kr and Jp:
             kr_clean = clean_text(kr)
-            tw_clean = clean_text(tw)
-            mapping[kr_clean] = tw_clean
+            jp_clean = clean_text(Jp)
+            mapping[kr_clean] = jp_clean
     return mapping
 
 output_file = "skill_Desc_mapping.json"
