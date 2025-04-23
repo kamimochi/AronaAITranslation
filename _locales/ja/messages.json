@@ -62,5 +62,17 @@
   "alertMessage": {
     "message": "Google 翻訳を閉じてください(右上の拡張機能管理でこのメッセージを閉じることができます)。"
   },
-  "toggleAlert": { "message": "アラートを有効にする" } 
+  "toggleAlert": { "message": "アラートを有効にする" },
+  "clearCache": {
+    "message": "キャッシュをクリア",
+    "description": "キャッシュをクリアするボタンのラベル"
+  },
+  "clearCleared" : {
+    "message": "キャッシュがクリアされました。",
+    "description": "キャッシュクリアの成功メッセージ"
+  },
+  "cacheClearError" : {
+    "message": "キャッシュのクリアに失敗しました。",
+    "description": "キャッシュクリアの失敗メッセージ"
+  }
 }

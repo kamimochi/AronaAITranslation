@@ -57,6 +57,7 @@
 				"zh_TW-json/ProfileIntroduction.json",
 				"zh_TW-json/WeaponNameMapping.json",
 				"zh_TW-json/crafting.json",
+				"zh_TW-json/skill_Desc_one_row.json",
 				"JPN-json/TacticRole.json",
 				"JPN-json/ArmorType.json",
 				"JPN-json/dictionary.json",
@@ -83,6 +84,7 @@
 				"JPN-json/ProfileIntroduction.json",
 				"JPN-json/WeaponNameMapping.json",
 				"JPN-json/crafting.json",
+				"JPN-json/skill_Desc_one_row.json",
 				"fonts/PerfectDOSVGA437.ttf",
 				"fonts/U-OTF-ShinMGoUpr-DeBold.otf",
 				"fonts/U-OTF-ShinMGoUpr-Medium.otf"

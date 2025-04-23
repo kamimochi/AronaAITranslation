@@ -5,6 +5,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const aboutBtn = document.getElementById("about-btn");
 
 
+    const clearCacheBtn = document.getElementById('clear-cache-btn');
+    clearCacheBtn.addEventListener('click', () => {
+        const req = indexedDB.deleteDatabase('translation_cache');
+        req.onsuccess = () => {
+            alert(chrome.i18n.getMessage('cacheCleared'));
+            // 重載當前分頁
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                chrome.tabs.reload(tabs[0].id);
+            });
+        };
+        req.onerror = () => {
+            alert(chrome.i18n.getMessage('cacheClearError'));
+        };
+    });
+
+
     // Chrome/Firefox 共用的 API
     if (typeof browser === "undefined") {
         var browser = chrome;

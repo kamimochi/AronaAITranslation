@@ -64,6 +64,15 @@
   },
   "toggleAlert": {
     "message": "關閉彈跳視窗"
+  },
+  "clearCache": {
+    "message": "清除快取"
+  },
+  "cacheCleared": {
+    "message": "快取已清除"
+  },
+  "cacheClearError": {
+    "message": "清除快取時發生錯誤"
   }
 }
   

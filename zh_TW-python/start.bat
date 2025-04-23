@@ -27,6 +27,7 @@ py ProfileIntroductionStu.py
 py WeaponName.py
 py crafting.py
 py locskillDescript.py
+py loc_skill_Desc_one_row.py
 
 :: 如果沒有上層的 json 資料夾，就自動建立一個
 if not exist "..\zh_TW-json" (
