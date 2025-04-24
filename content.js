@@ -595,6 +595,7 @@ function debounce(func, delay) {
 	};
 }
 
+
 // 初始化和消息處理
 async function initialize() {
 	// 處理 arona.ai 站點特定邏輯
@@ -617,24 +618,35 @@ async function initialize() {
 		DOMTranslator.translatePage();
 	}
 
-	// 註冊消息監聽器
-	browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
-		if (request.action === 'enableTranslation') {
-			await Config.save('translationEnabled', true);
-			DOMTranslator.translatePage();
+	browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+		if (request.action === 'clearCache') {
+			const req = indexedDB.deleteDatabase('translation_cache');
+			req.onsuccess = () => sendResponse({ success: true });
+			req.onerror = () => sendResponse({ success: false });
+			return true; // 告訴 Chrome：我會 async 呼叫 sendResponse
 		}
-		else if (request.action === 'disableTranslation') {
-			await Config.save('translationEnabled', false);
-			location.reload();
-		}
-		else if (request.action === 'toggleDebugMode') {
-			await Config.save('debugMode', request.debugMode);
-			console.log(Config.current.debugMode ? "Debug Mode is ON." : "Debug Mode is OFF.");
-		}
-		else if (request.action === 'setLanguage') {
-			await Config.save('language', request.language);
-			location.reload();
-		}
+
+		// 其餘需要 await 的邏輯，就用 IIFE 包起來
+		(async () => {
+			if (request.action === 'enableTranslation') {
+				await Config.save('translationEnabled', true);
+				DOMTranslator.translatePage();
+			} else if (request.action === 'disableTranslation') {
+				await Config.save('translationEnabled', false);
+				location.reload();
+			} else if (request.action === 'toggleDebugMode') {
+				await Config.save('debugMode', request.debugMode);
+				console.log(
+					Config.current.debugMode
+						? 'Debug Mode is ON.'
+						: 'Debug Mode is OFF.'
+				);
+			} else if (request.action === 'setLanguage') {
+				await Config.save('language', request.language);
+				location.reload();
+			}
+			// 這些分支都不用回 sendResponse，所以不需要 return true
+		})();
 	});
 
 	// DOM 加載完成後檢查並翻譯

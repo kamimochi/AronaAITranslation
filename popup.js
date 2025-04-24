@@ -7,17 +7,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const clearCacheBtn = document.getElementById('clear-cache-btn');
     clearCacheBtn.addEventListener('click', () => {
-        const req = indexedDB.deleteDatabase('translation_cache');
-        req.onsuccess = () => {
-            alert(chrome.i18n.getMessage('cacheCleared'));
-            // 重載當前分頁
-            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                chrome.tabs.reload(tabs[0].id);
-            });
-        };
-        req.onerror = () => {
-            alert(chrome.i18n.getMessage('cacheClearError'));
-        };
+        // 1. 先跟前端頁面 (content script) 說要清除快取
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            chrome.tabs.sendMessage(
+                tabs[0].id,
+                { action: 'clearCache' },
+                (response) => {
+                    if (response && response.success) {
+                        alert(chrome.i18n.getMessage('cacheCleared'));
+                        // 2. 刪完之後再重載分頁
+                        chrome.tabs.reload(tabs[0].id);
+                    } else {
+                        alert(chrome.i18n.getMessage('cacheClearError'));
+                    }
+                }
+            );
+        });
     });
 
 
