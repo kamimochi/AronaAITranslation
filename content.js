@@ -116,7 +116,8 @@ const Dictionary = {
 			'ProfileIntroduction.json',
 			'WeaponNameMapping.json',
 			'crafting.json',
-			'skill_Desc_one_row.json'
+			'skill_Desc_one_row.json',
+			'StatusMessage.json'
 		];
 
 		this.data = {};

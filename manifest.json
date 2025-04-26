@@ -58,6 +58,8 @@
 				"zh_TW-json/WeaponNameMapping.json",
 				"zh_TW-json/crafting.json",
 				"zh_TW-json/skill_Desc_one_row.json",
+				"zh_TW-json/StatusMessage.json",
+				"JPN-json/StatusMessage.json",
 				"JPN-json/TacticRole.json",
 				"JPN-json/ArmorType.json",
 				"JPN-json/dictionary.json",
