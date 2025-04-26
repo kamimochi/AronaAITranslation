@@ -40,202 +40,202 @@ const Dictionary = {
 	sortedEntries: [],
 	compiledPatterns: [],
 	loadedFiles: [],
-  
+
 	// 載入語系字典
 	async loadLanguage(language) {
-	  const cacheKey = `translationDict_${language}`;
-  
-	  try {
-		// 先初始化 loadedFiles
-		this.loadedFiles = [];
-  
-		// 嘗試從 IndexedDB 讀取快取
-		const cached = await this.getFromDB(cacheKey);
-		if (cached) {
-		  // 如果有快取，就還原 dict 和 files
-		  this.data        = cached.dict || {};
-		  this.loadedFiles = cached.files || [];
-		} else {
-		  // 没快取时，从文件抓取
-		  await this.fetchDictionaryFiles(language);
-		  // 存 dict + files 供下次快速读取
-		  await this.saveToDB(cacheKey, {
-			dict:  this.data,
-			files: this.loadedFiles
-		  });
+		const cacheKey = `translationDict_${language}`;
+
+		try {
+			// 先初始化 loadedFiles
+			this.loadedFiles = [];
+
+			// 嘗試從 IndexedDB 讀取快取
+			const cached = await this.getFromDB(cacheKey);
+			if (cached) {
+				// 如果有快取，就還原 dict 和 files
+				this.data = cached.dict || {};
+				this.loadedFiles = cached.files || [];
+			} else {
+				// 没快取时，从文件抓取
+				await this.fetchDictionaryFiles(language);
+				// 存 dict + files 供下次快速读取
+				await this.saveToDB(cacheKey, {
+					dict: this.data,
+					files: this.loadedFiles
+				});
+			}
+
+			// 排序、編譯正則
+			this.sortedEntries = Object.entries(this.data)
+				.sort(([a], [b]) => b.length - a.length);
+			this.compileDictionary();
+
+			// Debug: 列印加載狀態
+			if (Config.current.debugMode) {
+				console.log(`[DEBUG] 成功載入字典檔案數：${this.loadedFiles.length} 個檔案`);
+				console.log(`[DEBUG] 字典總條目數：${Object.keys(this.data).length}`);
+				console.log(`[DEBUG] 檔案清單：`, this.loadedFiles);
+			}
+
+			return true;
+		} catch (error) {
+			console.error('Dictionary loading error:', error);
+			return false;
 		}
-  
-		// 排序、編譯正則
-		this.sortedEntries = Object.entries(this.data)
-		  .sort(([a], [b]) => b.length - a.length);
-		this.compileDictionary();
-  
-		// Debug: 列印加載狀態
-		if (Config.current.debugMode) {
-		  console.log(`[DEBUG] 成功載入字典檔案數：${this.loadedFiles.length} 個檔案`);
-		  console.log(`[DEBUG] 字典總條目數：${Object.keys(this.data).length}`);
-		  console.log(`[DEBUG] 檔案清單：`, this.loadedFiles);
-		}
-  
-		return true;
-	  } catch (error) {
-		console.error('Dictionary loading error:', error);
-		return false;
-	  }
 	},
-  
+
 	// 抓取多個 JSON 字典檔
 	async fetchDictionaryFiles(language) {
-	  const folderPath = language === 'zh_tw'
-		? 'zh_TW-json/'
-		: language === 'jpn'
-		  ? 'JPN-json/'
-		  : '';
-  
-	  const files = [
-		'dictionary.json',
-		'students_mapping.json',
-		'Event.json',
-		'Club.json',
-		'School.json',
-		'CharacterSSRNew.json',
-		'FamilyName_mapping.json',
-		'Hobby_mapping.json',
-		'skill_name_mapping.json',
-		'skill_Desc_mapping.json',
-		'furniture_name_mapping.json',
-		'furniture_Desc_mapping.json',
-		'item_name_mapping.json',
-		'item_Desc_mapping.json',
-		'equipment_Desc_mapping.json',
-		'equipment_name_mapping.json',
-		'stages_name_mapping.json',
-		'stages_Event_mapping.json',
-		'ArmorType.json',
-		'TacticRole.json',
-		'ProfileIntroduction.json',
-		'WeaponNameMapping.json',
-		'crafting.json',
-		'skill_Desc_one_row.json'
-	  ];
-  
-	  this.data = {};
-	  this.loadedFiles = [];
-  
-	  const results = await Promise.allSettled(
-		files.map(file =>
-		  fetch(browser.runtime.getURL(folderPath + file))
-			.then(r => r.ok ? r.json() : Promise.reject(`Failed to load ${file}`))
-		)
-	  );
-  
-	  results.forEach((res, i) => {
-		if (res.status === 'fulfilled') {
-		  Object.assign(this.data, res.value);
-		  this.loadedFiles.push(files[i]);
-		  if (Config.current.debugMode) {
-			console.log(`[DEBUG] 已載入 ${files[i]} （${Object.keys(res.value).length} 條）`);
-		  }
-		} else if (Config.current.debugMode) {
-		  console.warn(`[DEBUG] 載入失敗: ${files[i]} ->`, res.reason);
-		}
-	  });
+		const folderPath = language === 'zh_tw'
+			? 'zh_TW-json/'
+			: language === 'jpn'
+				? 'JPN-json/'
+				: '';
+
+		const files = [
+			'dictionary.json',
+			'students_mapping.json',
+			'Event.json',
+			'Club.json',
+			'School.json',
+			'CharacterSSRNew.json',
+			'FamilyName_mapping.json',
+			'Hobby_mapping.json',
+			'skill_name_mapping.json',
+			'skill_Desc_mapping.json',
+			'furniture_name_mapping.json',
+			'furniture_Desc_mapping.json',
+			'item_name_mapping.json',
+			'item_Desc_mapping.json',
+			'equipment_Desc_mapping.json',
+			'equipment_name_mapping.json',
+			'stages_name_mapping.json',
+			'stages_Event_mapping.json',
+			'ArmorType.json',
+			'TacticRole.json',
+			'ProfileIntroduction.json',
+			'WeaponNameMapping.json',
+			'crafting.json',
+			'skill_Desc_one_row.json'
+		];
+
+		this.data = {};
+		this.loadedFiles = [];
+
+		const results = await Promise.allSettled(
+			files.map(file =>
+				fetch(browser.runtime.getURL(folderPath + file))
+					.then(r => r.ok ? r.json() : Promise.reject(`Failed to load ${file}`))
+			)
+		);
+
+		results.forEach((res, i) => {
+			if (res.status === 'fulfilled') {
+				Object.assign(this.data, res.value);
+				this.loadedFiles.push(files[i]);
+				if (Config.current.debugMode) {
+					console.log(`[DEBUG] 已載入 ${files[i]} （${Object.keys(res.value).length} 條）`);
+				}
+			} else if (Config.current.debugMode) {
+				console.warn(`[DEBUG] 載入失敗: ${files[i]} ->`, res.reason);
+			}
+		});
 	},
-  
+
 	// IndexedDB: 讀取
 	async getFromDB(key) {
-	  return new Promise((resolve, reject) => {
-		const openReq = indexedDB.open('translation_cache', 1);
-		openReq.onupgradeneeded = e => {
-		  const db = e.target.result;
-		  if (!db.objectStoreNames.contains('dictionaries')) {
-			db.createObjectStore('dictionaries');
-		  }
-		};
-		openReq.onsuccess = e => {
-		  const db = e.target.result;
-		  const tx = db.transaction('dictionaries', 'readonly');
-		  const store = tx.objectStore('dictionaries');
-		  const getReq = store.get(key);
-		  getReq.onsuccess = () => resolve(getReq.result);
-		  getReq.onerror   = () => reject(getReq.error);
-		};
-		openReq.onerror = e => reject(e.target.error);
-	  });
+		return new Promise((resolve, reject) => {
+			const openReq = indexedDB.open('translation_cache', 1);
+			openReq.onupgradeneeded = e => {
+				const db = e.target.result;
+				if (!db.objectStoreNames.contains('dictionaries')) {
+					db.createObjectStore('dictionaries');
+				}
+			};
+			openReq.onsuccess = e => {
+				const db = e.target.result;
+				const tx = db.transaction('dictionaries', 'readonly');
+				const store = tx.objectStore('dictionaries');
+				const getReq = store.get(key);
+				getReq.onsuccess = () => resolve(getReq.result);
+				getReq.onerror = () => reject(getReq.error);
+			};
+			openReq.onerror = e => reject(e.target.error);
+		});
 	},
-  
+
 	// IndexedDB: 寫入
 	async saveToDB(key, value) {
-	  return new Promise((resolve, reject) => {
-		const openReq = indexedDB.open('translation_cache', 1);
-		openReq.onupgradeneeded = e => {
-		  const db = e.target.result;
-		  if (!db.objectStoreNames.contains('dictionaries')) {
-			db.createObjectStore('dictionaries');
-		  }
-		};
-		openReq.onsuccess = e => {
-		  const db = e.target.result;
-		  const tx = db.transaction('dictionaries', 'readwrite');
-		  const store = tx.objectStore('dictionaries');
-		  store.put(value, key);
-		  tx.oncomplete = () => resolve();
-		  tx.onerror    = () => reject(tx.error);
-		};
-		openReq.onerror = e => reject(e.target.error);
-	  });
+		return new Promise((resolve, reject) => {
+			const openReq = indexedDB.open('translation_cache', 1);
+			openReq.onupgradeneeded = e => {
+				const db = e.target.result;
+				if (!db.objectStoreNames.contains('dictionaries')) {
+					db.createObjectStore('dictionaries');
+				}
+			};
+			openReq.onsuccess = e => {
+				const db = e.target.result;
+				const tx = db.transaction('dictionaries', 'readwrite');
+				const store = tx.objectStore('dictionaries');
+				store.put(value, key);
+				tx.oncomplete = () => resolve();
+				tx.onerror = () => reject(tx.error);
+			};
+			openReq.onerror = e => reject(e.target.error);
+		});
 	},
-  
+
 	// 編譯字典為正則陣列
 	compileDictionary() {
-	  this.compiledPatterns = this.sortedEntries.map(([k, v]) => ({
-		pattern:     new RegExp(this.escapeRegExp(k), 'gi'),
-		replacement: v
-	  }));
+		this.compiledPatterns = this.sortedEntries.map(([k, v]) => ({
+			pattern: new RegExp(this.escapeRegExp(k), 'gi'),
+			replacement: v
+		}));
 	},
-  
+
 	escapeRegExp(str) {
-	  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	},
-  
+
 	// 模糊比對
 	getFuzzyTranslation(text, threshold = Config.current.fuzzyMatchThreshold) {
-	  if (!text) return null;
-	  let bestScore = 0, bestTrans = null;
-	  const lenThresh = text.length * 0.3;
-	  for (const [key, val] of this.sortedEntries) {
-		if (Math.abs(key.length - text.length) > lenThresh) continue;
-		const score = this.similarity(text, key);
-		if (score > bestScore) {
-		  bestScore = score;
-		  bestTrans = val;
-		  if (score >= 0.98) break;
+		if (!text) return null;
+		let bestScore = 0, bestTrans = null;
+		const lenThresh = text.length * 0.3;
+		for (const [key, val] of this.sortedEntries) {
+			if (Math.abs(key.length - text.length) > lenThresh) continue;
+			const score = this.similarity(text, key);
+			if (score > bestScore) {
+				bestScore = score;
+				bestTrans = val;
+				if (score >= 0.98) break;
+			}
 		}
-	  }
-	  return bestScore >= threshold ? bestTrans : null;
+		return bestScore >= threshold ? bestTrans : null;
 	},
-  
+
 	similarity(a, b) {
-	  if (!a.length && !b.length) return 1;
-	  const dist = this.levenshteinDistance(a, b);
-	  return 1 - dist / Math.max(a.length, b.length);
+		if (!a.length && !b.length) return 1;
+		const dist = this.levenshteinDistance(a, b);
+		return 1 - dist / Math.max(a.length, b.length);
 	},
-  
+
 	levenshteinDistance(a, b) {
-	  const m = a.length, n = b.length;
-	  let prev = Array(n + 1).fill(0), curr = Array(n + 1).fill(0);
-	  for (let j = 0; j <= n; j++) prev[j] = j;
-	  for (let i = 1; i <= m; i++) {
-		curr[0] = i;
-		for (let j = 1; j <= n; j++) {
-		  const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-		  curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+		const m = a.length, n = b.length;
+		let prev = Array(n + 1).fill(0), curr = Array(n + 1).fill(0);
+		for (let j = 0; j <= n; j++) prev[j] = j;
+		for (let i = 1; i <= m; i++) {
+			curr[0] = i;
+			for (let j = 1; j <= n; j++) {
+				const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+				curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+			}
+			[prev, curr] = [curr, prev];
 		}
-		[prev, curr] = [curr, prev];
-	  }
-	  return prev[n];
+		return prev[n];
 	}
-  };  
+};
 
 // 翻譯工作器管理
 const WorkerManager = {
@@ -412,29 +412,29 @@ const DOMTranslator = {
 					batch.forEach((node, idx) => {
 						const orig = node.textContent;
 						let newText = translatedTexts[idx];
-					  
+
 						// ← 新增：處理「小數連續」補斜線
 						const floatGroupRe = /(\d+\.\d+)(?=\d+\.\d+)/g;
 						newText = newText.replace(floatGroupRe, '$1/');
-					  
+
 						// 先對「連續 4 位整數」補斜線
 						const numGroupRe = /(\d{4})(?=\d{4})/g;
 						newText = newText.replace(numGroupRe, '$1/');
-					  
+
 						// 再處理百分比之間的斜線
 						const percentGapRe = /(\d+(?:\.\d+)?%)\s*(?=\d+(?:\.\d+)?%)/g;
 						newText = newText.replace(percentGapRe, '$1/');
-					  
+
 						// 嘗試模糊匹配
 						if (newText === orig) {
-						  const fuzzyMatch = Dictionary.getFuzzyTranslation(orig);
-						  if (fuzzyMatch) newText = fuzzyMatch;
+							const fuzzyMatch = Dictionary.getFuzzyTranslation(orig);
+							if (fuzzyMatch) newText = fuzzyMatch;
 						}
-					  
+
 						if (newText !== orig) {
-						  node.textContent = newText;
+							node.textContent = newText;
 						}
-					  });
+					});
 				} catch (error) {
 					console.error('Batch translation error:', error);
 				}
@@ -469,104 +469,86 @@ const DOMTranslator = {
 	},
 
 	async mergeAdjacentRubyNodes() {
-		const rubyNodes = Array.from(document.querySelectorAll('ruby'));
-		const processed = new Set();
+        const rubyNodes = Array.from(document.querySelectorAll('ruby'));
+        const processed = new Set();
 
-		for (const ruby of rubyNodes) {
-			if (processed.has(ruby) || !ruby.isConnected) continue;
+        for (const ruby of rubyNodes) {
+            if (processed.has(ruby) || !ruby.isConnected) continue;
 
-			const group = [ruby];
-			let next = ruby.nextSibling;
+            const group = [ruby];
+            let next = ruby.nextSibling;
+            // 跳过空白文本
+            while (next && next.nodeType === Node.TEXT_NODE && next.textContent.trim() === "") {
+                next = next.nextSibling;
+            }
+            // 收集连续 ruby 节点
+            while (next && next.nodeType === Node.ELEMENT_NODE && next.tagName === 'RUBY') {
+                group.push(next);
+                processed.add(next);
+                next = next.nextSibling;
+                while (next && next.nodeType === Node.TEXT_NODE && next.textContent.trim() === "") {
+                    next = next.nextSibling;
+                }
+            }
 
-			// 跳過空白文本節點
-			while (next && next.nodeType === Node.TEXT_NODE && next.textContent.trim() === "") {
-				next = next.nextSibling;
-			}
+            if (group.length > 1) {
+                const combined = group.map(n => n.textContent.trim()).join(' ');
+                const exact = Dictionary.sortedEntries.find(([k]) => k === combined);
+                const translated = exact ? exact[1] : Dictionary.getFuzzyTranslation(combined);
 
-			// 合併連續的 ruby 節點
-			while (next && next.nodeType === Node.ELEMENT_NODE && next.tagName === 'RUBY') {
-				if (!next.isConnected) break;
-				group.push(next);
-				processed.add(next);
-				next = next.nextSibling;
-
-				// 再次跳過空白文本節點
-				while (next && next.nodeType === Node.TEXT_NODE && next.textContent.trim() === "") {
-					next = next.nextSibling;
-				}
-			}
-
-			if (group.length > 1) {
-				const combined = group.map(n => n.textContent.trim()).join(' ');
-				const exact = Dictionary.sortedEntries.find(([k]) => k === combined);
-				const translated = exact ? exact[1] : Dictionary.getFuzzyTranslation(combined);
-
-				if (translated) {
-					const newNode = document.createElement('ruby');
-					newNode.textContent = translated;
-					const first = group[0];
-
-					if (first.parentNode && first.isConnected) {
-						first.parentNode.insertBefore(newNode, first);
-						group.forEach(n => {
-							if (n.isConnected) {
-								n.remove();
-								processed.add(n);
-							}
-						});
-					}
-				}
-			}
-		}
-	},
+                if (translated) {
+                    // 将译文写入第一个 ruby，其他 ruby 清空文本
+                    group.forEach((n, idx) => {
+                        if (idx === 0) {
+                            n.textContent = translated;
+                        } else {
+                            n.textContent = "";
+                        }
+                        processed.add(n);
+                    });
+                }
+            }
+        }
+    },
 
 	async mergeAdjacentSpanNodes() {
-		const spanNodes = Array.from(document.querySelectorAll('span'));
-		const processed = new Set();
-		const numericSlashRe = /^[0-9.%\/]+$/;
+        const spanNodes = Array.from(document.querySelectorAll('span'));
+        const processed = new Set();
+        const numericSlashRe = /^[0-9.%\/]+$/;
 
-		for (const span of spanNodes) {
-			if (processed.has(span) || !span.isConnected) continue;
+        for (const span of spanNodes) {
+            if (processed.has(span) || !span.isConnected) continue;
 
-			const group = [];
-			let curr = span;
+            const group = [];
+            let curr = span;
+            while (curr && curr.nodeType === Node.ELEMENT_NODE && curr.tagName === 'SPAN') {
+                const txt = curr.textContent.trim();
+                if (txt) group.push(curr);
+                processed.add(curr);
+                curr = curr.nextSibling;
+                while (curr && curr.nodeType === Node.TEXT_NODE && curr.textContent.trim() === '') {
+                    curr = curr.nextSibling;
+                }
+            }
 
-			while (curr && curr.nodeType === Node.ELEMENT_NODE && curr.tagName === "SPAN") {
-				const txt = curr.textContent.trim();
-				if (txt) group.push(curr);
-				processed.add(curr);
-				curr = curr.nextSibling;
+            if (group.length < 2 || group.every(n => numericSlashRe.test(n.textContent.trim()))) continue;
 
-				// 跳過空白文本節點
-				while (curr && curr.nodeType === Node.TEXT_NODE && curr.textContent.trim() === "") {
-					curr = curr.nextSibling;
-				}
-			}
+            const merged = group.map(n => n.textContent).join('')
+                .replace(/\s+/g, ' ').trim();
+            const exact = Dictionary.sortedEntries.find(([k]) => k === merged);
+            const translated = exact ? exact[1] : Dictionary.getFuzzyTranslation(merged);
 
-			// 跳過僅有數字的 span 組
-			if (group.length < 2 || group.every(n => numericSlashRe.test(n.textContent.trim()))) continue;
-
-			const merged = group.map(n => n.textContent).join("").replace(/\s+/g, " ").trim();
-			const exact = Dictionary.sortedEntries.find(([k]) => k === merged);
-			const translated = exact ? exact[1] : Dictionary.getFuzzyTranslation(merged);
-
-			if (translated) {
-				const newSpan = document.createElement("span");
-				newSpan.textContent = translated;
-				const first = group[0];
-
-				if (first.parentNode && first.isConnected) {
-					first.parentNode.insertBefore(newSpan, first);
-					group.forEach(n => {
-						if (n.isConnected) {
-							n.remove();
-							processed.add(n);
-						}
-					});
-				}
-			}
-		}
-	}
+            if (translated) {
+                group.forEach((n, idx) => {
+                    if (idx === 0) {
+                        n.textContent = translated;
+                    } else {
+                        n.textContent = '';
+                    }
+                });
+            }
+        }
+    }
 };
 
 // 網站特定處理
