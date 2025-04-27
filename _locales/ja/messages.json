@@ -55,6 +55,10 @@
     "message": "0.0.5 翻訳を追加し、翻訳効率を向上。",
     "description": "0.0.5 バージョン変更履歴"
   },
+  "changelog_006": {
+    "message": "0.0.6 json バージョン (非公開版)",
+    "description": "0.0.6 バージョン変更履歴"
+  },
   "extName": { "message": "テキスト翻訳" },
   "toggleTranslation": { "message": "翻訳を有効にする" },
   "toggleDebug": { "message": "デバッグモード" },

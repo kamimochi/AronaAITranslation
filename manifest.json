@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "Arona.ai Translator",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"description": "把Arona.ai翻譯成中文與日文",
 	"default_locale": "zh_TW",
 	"permissions": [

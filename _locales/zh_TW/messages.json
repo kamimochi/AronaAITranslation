@@ -55,6 +55,10 @@
     "message": "0.0.5 新增翻譯，優化翻譯效率。",
     "description": "0.0.5 版本變更記錄"
   },
+  "changelog_006": {
+    "message": "0.0.6 json版本(非發布版)",
+    "description": "0.0.6 版本變更記錄"
+  },
   "extName": { "message": "文字翻譯器" },
   "toggleTranslation": { "message": "啟用翻譯" },
   "toggleDebug": { "message": "Debug 模式" },
