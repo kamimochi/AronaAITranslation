@@ -6,6 +6,7 @@ if (typeof browser === 'undefined' || !browser) {
 
 // spanDict 會在 initialize 中被正確初始化
 let spanDict;
+let _skipInitialMutations = true;
 const Config = { // ... (Config 物件保持不變) ...
 	defaults: {
 		translationEnabled: false,
@@ -248,6 +249,8 @@ const WorkerManager = { // ... (WorkerManager 物件保持不變) ...
 	async init() {
 		if (typeof Worker === 'undefined') return false;
 
+
+
 		try {
 			const workerUrl = browser.runtime.getURL('translationWorker.js');
 			const response = await fetch(workerUrl);
@@ -360,12 +363,35 @@ const DOMTranslator = {
 		};
 		this.observer = new MutationObserver(this.handleMutations.bind(this));
 		// 確保 body 存在後再 observe
-		if (document.body) {
-			this.observer.observe(document.body, observerConfig);
+		
+		window.addEventListener('load', () => {
+			if (document.body) {
+				this.observer.observe(document.body, {
+					childList: true,
+					subtree: true,
+					characterData: true,
+					attributes: true,
+					attributeFilter: [this.translatedAttribute]
+				});
+			}
+		});
+		
+		const startObserving = () => {
+			if (document.body) {
+				this.observer.observe(document.body, {
+					childList: true,
+					subtree: true,
+					characterData: true,
+					attributes: true,
+					attributeFilter: [this.translatedAttribute]
+				});
+			}
+		};
+
+		if (document.readyState === 'interactive' || document.readyState === 'complete') {
+			startObserving();
 		} else {
-			document.addEventListener('DOMContentLoaded', () => {
-				if (document.body) this.observer.observe(document.body, observerConfig);
-			});
+			window.addEventListener('DOMContentLoaded', startObserving);
 		}
 
 		document.body.addEventListener('vaadin-overlay-open', () => {
@@ -394,6 +420,9 @@ const DOMTranslator = {
 	},
 
 	handleMutations(mutations) {
+		if (_skipInitialMutations) {
+			return;
+		}
 		if (!Config.current.translationEnabled || this.isTranslating) return;
 
 		const changedNodes = new Set();
@@ -477,7 +506,7 @@ const DOMTranslator = {
 
 	async translatePage() {
 		if (!Config.current.translationEnabled || this.isTranslating) return;
-		
+
 
 		this.isTranslating = true;
 		if (this.observer) this.observer.disconnect();
@@ -767,6 +796,27 @@ async function initialize() { // ... (initialize 保持不變，除了 spanDict 
 
 	if (Config.current.translationEnabled) {
 		DOMTranslator.translatePage();
+		window.addEventListener('load', () => {
+			DOMTranslator.translatePage();
+		});
+		[300, 800, 1500].forEach(delay =>
+			setTimeout(() => {
+				if (Config.current.translationEnabled) {
+					DOMTranslator.translatePage();
+				}
+			}, delay)
+		);
+	}
+
+	window.addEventListener('load', () => {
+		if (Config.current.translationEnabled) {
+			DOMTranslator.translatePage();
+		}
+		_skipInitialMutations = false;
+	});
+
+	if (document.readyState === 'interactive' || document.readyState === 'complete') {
+		_skipInitialMutations = false;
 	}
 
 	browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -896,6 +946,3 @@ class SpanDictionary { // ... (SpanDictionary class 保持不變) ...
 
 // 啟動初始化
 initialize();
-
-// 全域的 spanDict 初始化已移至 initialize 函數內部，以確保 Dictionary.data 已載入
-// const spanDict = new SpanDictionary(...); // 這一行應該已被移除
