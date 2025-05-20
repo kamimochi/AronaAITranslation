@@ -1,11 +1,12 @@
-// content.js - 優化版本
+// content.js - 修改版
 
 if (typeof browser === 'undefined' || !browser) {
 	var browser = chrome;
 }
 
+// spanDict 會在 initialize 中被正確初始化
 let spanDict;
-const Config = {
+const Config = { // ... (Config 物件保持不變) ...
 	defaults: {
 		translationEnabled: false,
 		debugMode: false,
@@ -35,7 +36,7 @@ const Config = {
 	}
 };
 
-const Dictionary = {
+const Dictionary = { // ... (Dictionary 物件保持不變，確保它能正確載入數據到 Dictionary.data) ...
 	data: {},
 	sortedEntries: [],
 	compiledPatterns: [],
@@ -84,7 +85,6 @@ const Dictionary = {
 		}
 	},
 
-	// 抓取多個 JSON 字典檔
 	async fetchDictionaryFiles(language) {
 		const folderPath = language === 'zh_tw'
 			? 'zh_TW-json/'
@@ -204,7 +204,7 @@ const Dictionary = {
 		let bestScore = 0, bestTrans = null;
 		const lenThresh = text.length * 0.3;
 		for (const [key, val] of this.sortedEntries) {
-			if (Math.abs(key.length - text.length) > lenThresh) continue;
+			if (Math.abs(key.length - text.length) > lenThresh && key.length > 5 && text.length > 5) continue; // 增加長度判斷以優化
 			const score = this.similarity(text, key);
 			if (score > bestScore) {
 				bestScore = score;
@@ -216,9 +216,11 @@ const Dictionary = {
 	},
 
 	similarity(a, b) {
-		if (!a.length && !b.length) return 1;
+		if (!a || !b) return (a === b) ? 1 : 0; // 處理空字串和 undefined
+		const maxLength = Math.max(a.length, b.length);
+		if (maxLength === 0) return 1;
 		const dist = this.levenshteinDistance(a, b);
-		return 1 - dist / Math.max(a.length, b.length);
+		return 1 - dist / maxLength;
 	},
 
 	levenshteinDistance(a, b) {
@@ -237,11 +239,7 @@ const Dictionary = {
 	}
 };
 
-
-
-
-// 翻譯工作器管理
-const WorkerManager = {
+const WorkerManager = { // ... (WorkerManager 物件保持不變) ...
 	worker: null,
 	isReady: false,
 	pendingRequests: new Map(),
@@ -273,19 +271,27 @@ const WorkerManager = {
 
 			this.worker.onerror = err => {
 				console.error('Worker error:', err);
-				setTimeout(() => this.init(), 5000);
+				// 可以考慮更穩健的重試機制或錯誤回饋
+				// setTimeout(() => this.init(), 5000); // 避免無限重試
 			};
 
 
 			this.worker.postMessage({ action: "init" });
 
 
-			return new Promise(resolve => {
+			return new Promise((resolve, reject) => {
+                let retries = 0;
+                const maxRetries = 10; // 最多重試10次 (共1秒)
 				const checkReady = setInterval(() => {
 					if (this.isReady) {
 						clearInterval(checkReady);
 						resolve(true);
-					}
+					} else if (retries >= maxRetries) {
+                        clearInterval(checkReady);
+                        console.error("Worker failed to become ready.");
+                        reject(false);
+                    }
+                    retries++;
 				}, 100);
 			});
 		} catch (err) {
@@ -296,104 +302,152 @@ const WorkerManager = {
 
 	async sendTranslationRequest(texts) {
 		if (!this.worker || !this.isReady) {
+            console.warn("Worker not ready or not initialized, returning original texts.");
 			return texts;
 		}
 
 		const requestId = this.nextRequestId++;
 
-		return new Promise(resolve => {
-			this.pendingRequests.set(requestId, { resolve });
+		return new Promise((resolve, reject) => {
+			this.pendingRequests.set(requestId, { resolve, reject });
+
+            // 增加超時處理
+            const timeoutId = setTimeout(() => {
+                if (this.pendingRequests.has(requestId)) {
+                    this.pendingRequests.delete(requestId);
+                    console.warn(`Translation request ${requestId} timed out.`);
+                    resolve(texts); // 超時則返回原文
+                }
+            }, 5000); // 5秒超時
+
 
 			this.worker.postMessage({
 				action: "translate",
 				requestId,
 				texts,
-				patterns: Dictionary.compiledPatterns.map(p => ({
+				patterns: Dictionary.compiledPatterns.map(p => ({ //確保 Dictionary.compiledPatterns 已準備好
 					pattern: p.pattern.source,
 					replacement: p.replacement
 				}))
 			});
+            // 在 resolve 中清除超時
+            const originalResolve = resolve;
+            this.pendingRequests.get(requestId).resolve = (value) => {
+                clearTimeout(timeoutId);
+                originalResolve(value);
+            };
 		});
 	}
 };
 
-// DOM 翻譯模塊
-// DOM 翻譯模塊
 const DOMTranslator = {
     isTranslating: false,
     observer: null,
+    translatedAttribute: 'data-translated-by-extension', // 使用更明確的屬性名，避免衝突
     skipSelector: [
-        'script', 'style', 'input', 'select', 'textarea', '.no-translate',
-        '.MuiSlider-markLabel', '.MuiSlider-thumb', '.MuiSlider-track', '.MuiSlider-rail',
-        '[data-translated="true"]' // 新增：直接跳過已標記的元素
     ],
-    translatedAttribute: 'data-translated', // 定義標記屬性名，方便管理
 
     init() {
-        // 初始化 MutationObserver
-        const observerConfig = { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: [this.translatedAttribute] }; // 監聽屬性變化，特別是我們的標記
+        // 動態將 translatedAttribute 添加到 skipSelector
+        this.skipSelector.push(`[${this.translatedAttribute}="true"]`);
+
+        const observerConfig = {
+            childList: true,
+            subtree: true,
+            characterData: true,
+            attributes: true, // 需要監聽屬性變化
+            attributeFilter: [this.translatedAttribute] // 特別關注我們的標記屬性
+        };
         this.observer = new MutationObserver(this.handleMutations.bind(this));
-        this.observer.observe(document.body, observerConfig);
+        // 確保 body 存在後再 observe
+        if (document.body) {
+            this.observer.observe(document.body, observerConfig);
+        } else {
+            document.addEventListener('DOMContentLoaded', () => {
+                 if (document.body) this.observer.observe(document.body, observerConfig);
+            });
+        }
     },
 
     handleMutations(mutations) {
-        if (!Config.current.translationEnabled) return;
+        if (!Config.current.translationEnabled || this.isTranslating) return;
 
         const changedNodes = new Set();
-        let translationAttributeChanged = false;
+        let relevantMutationDetected = false;
 
         for (const mutation of mutations) {
-            // 如果是我們自己的 data-translated 屬性變化，通常可以忽略，除非是外部移除了它
+            // 如果是我們自己添加或移除 data-translated 屬性造成的變動，通常可以忽略
+            // 以避免無限循環。但如果外部腳本移除了我們的標記，則可能需要重新翻譯。
             if (mutation.type === 'attributes' && mutation.attributeName === this.translatedAttribute) {
-                translationAttributeChanged = true;
-                // 如果是外部移除了我們的標記，可能需要重新翻譯，但這比較複雜，暫時先簡化處理
-                // changedNodes.add(mutation.target); // 可以考慮將其加入，以便重新評估
-                continue; // 簡單起見，先忽略我們自己標記的變化
+                // 如果是外部移除了標記 (value is null)，則將其加入 changedNodes
+                if (mutation.target.getAttribute(this.translatedAttribute) === null) {
+                    // 檢查其父級是否也已經有標記，避免重複添加
+                    if (!mutation.target.closest(`[${this.translatedAttribute}="true"]`)) {
+                         changedNodes.add(mutation.target);
+                         relevantMutationDetected = true;
+                    }
+                }
+                continue; // 大部分情況下忽略我們自己標記的變化
             }
 
-            // 文本內容變化
             if (mutation.type === 'characterData') {
-                // 檢查父節點是否已標記
-                if (mutation.target.parentNode && !mutation.target.parentNode.hasAttribute(this.translatedAttribute)) {
-                    changedNodes.add(mutation.target.parentNode);
+                const parent = mutation.target.parentNode;
+                // 只有當文本節點的父節點未被標記時，才認為是需要處理的變動
+                if (parent && parent.nodeType === Node.ELEMENT_NODE && !parent.hasAttribute(this.translatedAttribute)) {
+                    changedNodes.add(parent);
+                    relevantMutationDetected = true;
                 }
-            }
-            // 節點添加或移除
-            else if (mutation.type === 'childList') {
+            } else if (mutation.type === 'childList') {
                 mutation.addedNodes.forEach(node => {
-                    if (node.nodeType === Node.ELEMENT_NODE && !node.hasAttribute(this.translatedAttribute) && !node.closest(`[${this.translatedAttribute}]`)) {
+                    // 只處理未被標記的已添加元素節點或其父節點未被標記的文本節點
+                    if (node.nodeType === Node.ELEMENT_NODE && !node.hasAttribute(this.translatedAttribute) && !node.closest(`[${this.translatedAttribute}="true"]`)) {
                         changedNodes.add(node);
-                    }
-                    // 如果添加的是文本節點，其父節點也可能需要檢查
-                    else if (node.nodeType === Node.TEXT_NODE && node.parentNode && !node.parentNode.hasAttribute(this.translatedAttribute) && !node.parentNode.closest(`[${this.translatedAttribute}]`)) {
-                         changedNodes.add(node.parentNode);
+                        relevantMutationDetected = true;
+                    } else if (node.nodeType === Node.TEXT_NODE) {
+                        const parent = node.parentNode;
+                        if (parent && parent.nodeType === Node.ELEMENT_NODE && !parent.hasAttribute(this.translatedAttribute) && !parent.closest(`[${this.translatedAttribute}="true"]`)) {
+                            changedNodes.add(parent);
+                            relevantMutationDetected = true;
+                        }
                     }
                 });
-                // 對於移除的節點，我們通常不需要做什麼，因為它們已經不在 DOM 中了
             }
         }
 
-        if (changedNodes.size > 0) {
-            this.observer.disconnect(); // 斷開，避免處理自己觸發的變化
+        if (relevantMutationDetected && changedNodes.size > 0) {
+            if (this.observer) this.observer.disconnect();
             this.debouncedTranslate(Array.from(changedNodes));
-        } else if (translationAttributeChanged && changedNodes.size === 0) {
-            // 如果只有 data-translated 屬性變化，並且沒有其他需要翻譯的節點，
-            // 我們可能仍然需要重新啟動 observer，以防外部移除了標記
-             this.observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: [this.translatedAttribute] });
+        } else if (!relevantMutationDetected && this.observer && !this.isTranslating) {
+             // 如果沒有檢測到需要翻譯的相關變動 (例如只有我們自己移除標記後又加上)，確保 observer 仍然連接
+            // 但要小心這種情況，通常 debouncedTranslate 末尾會重連
         }
     },
 
     debouncedTranslate: debounce(async function (nodes) {
         if (Config.current.debugMode) console.log('[DEBUG] Debounced translate triggered for nodes:', nodes);
-        await this.mergeAdjacentNodes(); // merge 內部也需要檢查標記
-        await this.translateNodes(nodes.filter(node => node.isConnected && !node.hasAttribute(this.translatedAttribute) && !node.closest(`[${this.translatedAttribute}]`))); // 過濾掉已標記或其父級已標記的節點
-        
-        // 確保在所有異步操作完成後再重新連接 observer
-        if (this.observer) { // 檢查 observer 是否還存在 (例如，在 disableTranslation 時可能為 null)
-             this.observer.observe(
-                document.body,
-                { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: [this.translatedAttribute] }
+        if (this.isTranslating) return; // 避免重入
+        this.isTranslating = true;
+
+        try {
+            // mergeAdjacentNodes 應該在 translateNodes 之前，並且只處理未標記的節點
+            await this.mergeAdjacentNodes(); // merge 內部已處理標記檢查
+            // 過濾掉在 merge 過程中可能已被標記的節點，以及其父級已被標記的節點
+            const nodesToTranslate = nodes.filter(node =>
+                node.isConnected &&
+                (!node.hasAttribute || !node.hasAttribute(this.translatedAttribute)) &&
+                (!node.closest || !node.closest(`[${this.translatedAttribute}="true"]`))
             );
+            if (nodesToTranslate.length > 0) {
+                await this.translateNodes(nodesToTranslate);
+            }
+        } finally {
+            this.isTranslating = false;
+            if (this.observer && document.body) {
+                 this.observer.observe(
+                    document.body,
+                    { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: [this.translatedAttribute] }
+                );
+            }
         }
     }, 100),
 
@@ -401,72 +455,88 @@ const DOMTranslator = {
         if (!Config.current.translationEnabled || this.isTranslating) return;
 
         this.isTranslating = true;
-        if (this.observer) this.observer.disconnect(); // 翻譯前斷開
+        if (this.observer) this.observer.disconnect();
 
         try {
-            // 在全頁翻譯前，可以考慮移除所有已存在的 data-translated 標記，以確保全新翻譯
-            // document.querySelectorAll(`[${this.translatedAttribute}]`).forEach(el => el.removeAttribute(this.translatedAttribute));
-            // 但這也可能導致不必要的重翻，需要權衡。目前假設全新頁面或手動觸發時，就是要重翻。
+            // 可選：在全頁翻譯前，移除所有舊標記。
+            document.querySelectorAll(`[${this.translatedAttribute}]`).forEach(el => el.removeAttribute(this.translatedAttribute));
 
-            await this.mergeAdjacentNodes();
-            await new Promise(resolve => setTimeout(resolve, 0)); // 確保 DOM 更新
-            await this.translateNodes([document.body]); // translateNodes 內部會檢查標記
+            await this.mergeAdjacentNodes(); // 先 Span 後 Ruby
+            await new Promise(resolve => setTimeout(resolve, 0)); // DOM 更新緩衝
+            await this.translateNodes([document.body]);
         } catch (error) {
             console.error('Translation error:', error);
         } finally {
             this.isTranslating = false;
-            if (this.observer) { // 檢查 observer 是否還存在
+            if (this.observer && document.body) {
                 this.observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: [this.translatedAttribute] });
             }
         }
     },
 
     async translateNodes(nodes) {
-        if (!Config.current.translationEnabled || !nodes.length) return;
+        if (!Config.current.translationEnabled || !nodes || !nodes.length) return;
 
         for (const node of nodes) {
-            // 如果節點本身或其祖先已被標記，則跳過
-            if (!node || !node.isConnected || node.hasAttribute && node.hasAttribute(this.translatedAttribute) || node.closest && node.closest(`[${this.translatedAttribute}]`)) {
+            // 防禦性檢查，確保節點存在且已連接
+            if (!node || !node.isConnected) continue;
+
+            // 如果節點本身是元素且已被標記，或其祖先已被標記，則跳過
+            if (node.nodeType === Node.ELEMENT_NODE && (node.hasAttribute(this.translatedAttribute) || node.closest(`[${this.translatedAttribute}="true"]`))) {
+                continue;
+            }
+            // 如果節點是文本節點，檢查其父元素是否已被標記
+            if (node.nodeType === Node.TEXT_NODE && node.parentNode && node.parentNode.nodeType === Node.ELEMENT_NODE && (node.parentNode.hasAttribute(this.translatedAttribute) || node.parentNode.closest(`[${this.translatedAttribute}="true"]`))) {
                 continue;
             }
 
+
             const textNodes = [];
-            this.collectTextNodes(node, textNodes); // collectTextNodes 內部也需要檢查標記
+            this.collectTextNodes(node, textNodes);
 
             if (!textNodes.length) continue;
 
             const BATCH_SIZE = 100;
             for (let i = 0; i < textNodes.length; i += BATCH_SIZE) {
-                const batch = textNodes.slice(i, i + BATCH_SIZE);
+                const batch = textNodes.slice(i, i + BATCH_SIZE).filter(tn => tn.parentNode); // 確保文本節點有父節點
+                if (!batch.length) continue;
+
                 const textsToTranslate = batch.map(n => n.textContent);
 
                 try {
                     const translatedTexts = await WorkerManager.sendTranslationRequest(textsToTranslate);
+                    if (!translatedTexts || translatedTexts.length !== batch.length) {
+                         console.error("Translated texts mismatch with batch size or undefined.");
+                         continue;
+                    }
 
-                    batch.forEach((textNode, idx) => { // 這裡的 node 是 textNode
+                    batch.forEach((textNode, idx) => {
                         const orig = textNode.textContent;
                         let newText = translatedTexts[idx];
                         let finalNewText = newText;
 
-                        // 優先嘗試對原始完整文本進行精確詞典匹配 (從 spanDict 或 Dictionary)
-                        const exactMatchForOrig = spanDict.findExact(orig); // 假設 spanDict 是主要詞典
+                        // 確保 newText 不是 undefined 或 null
+                        if (typeof newText !== 'string' && newText !== null && newText !== undefined) {
+                            if(Config.current.debugMode) console.warn(`[DEBUG] Received non-string translation for: "${orig}", got:`, newText);
+                            finalNewText = orig; // 保守處理，使用原文
+                        }
 
+
+                        const exactMatchForOrig = spanDict.findExact(orig);
                         if (exactMatchForOrig) {
                             finalNewText = exactMatchForOrig;
                         } else {
-                            // 如果 worker 未作任何更改，則嘗試模糊匹配
-                            if (newText === orig) {
+                            if (newText === orig) { // Worker 未做任何更改
                                 const fuzzyMatchForOrig = spanDict.findFuzzy(orig);
                                 if (fuzzyMatchForOrig) {
                                     finalNewText = fuzzyMatchForOrig;
                                 }
                             }
-                            // else: worker 已經做了一些部分翻譯，finalNewText 此時就是 newText
+                            // else: worker 已做部分翻譯，finalNewText 目前是 newText
                         }
 
                         if (finalNewText !== orig) {
                             textNode.textContent = finalNewText;
-                            // 給文本節點的父元素打標記
                             if (textNode.parentNode && textNode.parentNode.nodeType === Node.ELEMENT_NODE) {
                                 textNode.parentNode.setAttribute(this.translatedAttribute, 'true');
                             }
@@ -482,117 +552,130 @@ const DOMTranslator = {
     collectTextNodes(node, textNodes) {
         const numericSlashRe = /^[0-9.%\/]+$/;
 
-        // 如果節點本身或其祖先已被標記，則跳過其所有子節點
-        if (node.nodeType === Node.ELEMENT_NODE && (node.hasAttribute(this.translatedAttribute) || node.closest(`[${this.translatedAttribute}]`))) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            // 如果元素本身已被標記，或其祖先已被標記，則不收集其下的任何文本節點
+            if (node.hasAttribute(this.translatedAttribute) || node.closest(`[${this.translatedAttribute}="true"]`)) {
+                return;
+            }
+            // 如果是 skipSelector 中的元素，也不收集
+            if (this.skipSelector.some(selector => node.matches && node.matches(selector))) {
+                return;
+            }
+            // 遍歷子節點
+            node.childNodes.forEach(child => this.collectTextNodes(child, textNodes));
             return;
         }
         
         if (node.nodeType === Node.TEXT_NODE) {
             const trimmed = node.textContent.trim();
-            // 確保其父節點未被標記 (因為文本節點自身不能有屬性)
+            // 確保文本節點的父節點未被標記
+            const parent = node.parentNode;
             if (trimmed.length > 0 && !numericSlashRe.test(trimmed) &&
-                (!node.parentNode || !node.parentNode.hasAttribute || !node.parentNode.hasAttribute(this.translatedAttribute))) {
+                parent && parent.nodeType === Node.ELEMENT_NODE &&
+                !parent.hasAttribute(this.translatedAttribute) &&
+                !parent.closest(`[${this.translatedAttribute}="true"]`)) {
                 textNodes.push(node);
             }
             return;
         }
-
-        if (node.nodeType === Node.ELEMENT_NODE &&
-            !this.skipSelector.some(selector => node.matches && node.matches(selector))) { // skipSelector 已加入 [data-translated="true"]
-            node.childNodes.forEach(child => this.collectTextNodes(child, textNodes));
-        }
     },
 
     async mergeAdjacentNodes() {
-        // 在 mergeAdjacentNodes 執行前，確保 observer 已斷開
-        if (this.observer) this.observer.disconnect();
+        // 順序：先 Spans，再 Rubies
+        if (this.observer) this.observer.disconnect(); // 斷開 observer 避免干擾
         try {
-            await Promise.all([
-                this.mergeAdjacentRubyNodes(),
-                this.mergeAdjacentSpanNodes()
-            ]);
+            await this.mergeAdjacentSpanNodes();
+            // 可以考慮在兩者之間加入一個短暫的延遲或 DOM 更新等待，如果它們之間有依賴
+            // await new Promise(resolve => setTimeout(resolve, 0));
+            await this.mergeAdjacentRubyNodes();
         } finally {
-            // mergeAdjacentNodes 執行後，不一定立即重連 observer，
-            // 通常由 translatePage 或 debouncedTranslate 的末尾統一重連。
-            // 但如果 mergeAdjacentNodes 是獨立調用的，則可能需要考慮。
-            // 在目前的結構下，它是由 translatePage 或 debouncedTranslate 調用，所以這裡不需要重連。
+            // 注意：不在此處重連 observer，由調用 mergeAdjacentNodes 的外層函數
+            // (如 translatePage 或 debouncedTranslate) 在其操作的最後統一重連。
         }
     },
 
     async mergeAdjacentRubyNodes() {
-        const rubyNodes = Array.from(document.querySelectorAll('ruby:not([data-translated="true"])')); // 直接選取未標記的
-        const processed = new Set(); // processed 仍然有用，用於處理在同一次 merge 中的分組
+        const rubyNodes = Array.from(document.querySelectorAll(`ruby:not([${this.translatedAttribute}="true"])`));
+        const processedInThisRun = new Set();
 
         for (const ruby of rubyNodes) {
-            if (processed.has(ruby) || !ruby.isConnected || ruby.hasAttribute(this.translatedAttribute)) continue; // 再次檢查
+            if (processedInThisRun.has(ruby) || !ruby.isConnected || ruby.hasAttribute(this.translatedAttribute)) continue;
 
-            // ... (收集 group 的邏輯不變) ...
-            const group = [ruby];
-            // ... (以下省略了 group 的收集邏輯，與您原碼一致)
-            let next = ruby.nextSibling;
-            while (next && next.nodeType === Node.TEXT_NODE && next.textContent.trim() === "") {
-                next = next.nextSibling;
-            }
-            while (next && next.nodeType === Node.ELEMENT_NODE && next.tagName === 'RUBY' && !next.hasAttribute(this.translatedAttribute)) {
-                group.push(next);
-                processed.add(next); // 標記為本次 merge 中已處理
-                next = next.nextSibling;
-                while (next && next.nodeType === Node.TEXT_NODE && next.textContent.trim() === "") {
-                    next = next.nextSibling;
+            const group = [];
+            let curr = ruby;
+            while (curr && curr.nodeType === Node.ELEMENT_NODE && curr.tagName === 'RUBY' && !curr.hasAttribute(this.translatedAttribute)) {
+                group.push(curr);
+                // 先不加入 processedInThisRun，等 group 處理完畢
+                let nextSibling = curr.nextSibling;
+                while (nextSibling && nextSibling.nodeType === Node.TEXT_NODE && nextSibling.textContent.trim() === '') {
+                    nextSibling = nextSibling.nextSibling;
                 }
+                curr = (nextSibling && nextSibling.nodeType === Node.ELEMENT_NODE && nextSibling.tagName === 'RUBY') ? nextSibling : null;
             }
 
+            if (group.length < 2) { // merge 是為了合併多個，所以至少需要2個
+                 group.forEach(n => processedInThisRun.add(n)); // 標記已檢查，避免在本輪中重複作為 group 開頭
+                continue;
+            }
+            
+            group.forEach(n => processedInThisRun.add(n)); // 將 group 內所有元素標記為本輪已處理
 
-            if (group.length > 1) { // 確保 group 中所有元素都未被標記
-                const combined = group.map(n => n.textContent.trim()).join(' ');
-                // 注意：這裡的 Dictionary.sortedEntries 和 Dictionary.getFuzzyTranslation 應考慮是否也使用 spanDict
-                const exact = Dictionary.sortedEntries.find(([k]) => k === combined); // 或 spanDict.findExact(combined)
-                const translated = exact ? exact[1] : Dictionary.getFuzzyTranslation(combined); // 或 spanDict.findFuzzy(combined)
+            const combined = group.map(n => n.textContent.trim()).join(' ');
+            // 使用 spanDict 保持一致性，因為 spanDict 是基於 Dictionary.data 初始化的
+            const exactTrans = spanDict.findExact(combined);
+            const fuzzyTrans = exactTrans ? null : spanDict.findFuzzy(combined);
+            const translated = exactTrans || fuzzyTrans;
 
-                if (translated) {
-                    group.forEach((n, idx) => {
-                        if (idx === 0) {
-                            n.textContent = translated;
-                        } else {
-                            n.textContent = "";
-                        }
-                        n.setAttribute(this.translatedAttribute, 'true'); // 添加標記
-                        processed.add(n); // 確保 processed 集合也更新
-                    });
-                }
+            if (translated) {
+                group.forEach((n, idx) => {
+                    if (idx === 0) {
+                        n.textContent = translated;
+                    } else {
+                        n.textContent = ""; // 清空其他 ruby 節點
+                    }
+                    n.setAttribute(this.translatedAttribute, 'true');
+                });
             }
         }
     },
 
     async mergeAdjacentSpanNodes() {
-        const spanNodes = Array.from(document.querySelectorAll('span:not([data-translated="true"])')); // 直接選取未標記的
-        const processed = new Set(); // processed 仍然有用
+        const spanNodes = Array.from(document.querySelectorAll(`span:not([${this.translatedAttribute}="true"])`));
+        const processedInThisRun = new Set(); // 用於追蹤在本輪 mergeAdjacentSpanNodes 調用中已處理的節點
         const numericSlashRe = /^[0-9.%\/]+$/;
 
         for (const span of spanNodes) {
-            // 再次檢查，因為 spanNodes 是一開始獲取的快照，DOM 可能已變
-            if (processed.has(span) || !span.isConnected || span.hasAttribute(this.translatedAttribute)) continue;
+            // 如果節點已在本輪處理過，或者已不在DOM中，或者已被標記為已翻譯，則跳過
+            if (processedInThisRun.has(span) || !span.isConnected || span.hasAttribute(this.translatedAttribute)) continue;
 
             const group = [];
             let curr = span;
-            while (curr && curr.nodeType === Node.ELEMENT_NODE && curr.tagName === 'SPAN' && !curr.hasAttribute(this.translatedAttribute)) { // 檢查 group 中的每個元素
+            // 收集連續的、未被標記的 SPAN 節點
+            while (curr && curr.nodeType === Node.ELEMENT_NODE && curr.tagName === 'SPAN' && !curr.hasAttribute(this.translatedAttribute)) {
                 const txt = curr.textContent.trim();
-                if (txt) group.push(curr);
-                // 不在這裡 add to processed，在 group 成功翻譯後再 add
-                curr = curr.nextSibling;
-                while (curr && curr.nodeType === Node.TEXT_NODE && curr.textContent.trim() === '') {
-                    curr = curr.nextSibling;
+                if (txt) { // 只添加有實質內容的 span
+                    group.push(curr);
                 }
+                // 先不將 curr 加入 processedInThisRun，等 group 形成並處理後再決定
+                let nextSibling = curr.nextSibling;
+                // 跳過 SPAN 之間可能存在的空白文本節點
+                while (nextSibling && nextSibling.nodeType === Node.TEXT_NODE && nextSibling.textContent.trim() === '') {
+                    nextSibling = nextSibling.nextSibling;
+                }
+                curr = (nextSibling && nextSibling.nodeType === Node.ELEMENT_NODE && nextSibling.tagName === 'SPAN') ? nextSibling : null;
             }
 
+            // 如果 group 不符合翻譯條件 (少于2个，或全是數字符號)
             if (group.length < 2 || group.every(n => numericSlashRe.test(n.textContent.trim()))) {
-                // 如果 group 不符合翻譯條件，但裡面的元素被掃描過了，把它們加到 processed 以免重複掃描空的 group
-                 group.forEach(n => processed.add(n));
+                group.forEach(n => processedInThisRun.add(n)); // 這些節點在本輪中不再作為新 group 的起點
                 continue;
             }
 
-            const merged = group.map(n => n.textContent).join('')
-                .replace(/\s+/g, ' ').trim();
+            // 將 group 內所有元素標記為本輪已處理，避免它們在後續循環中成為新 group 的起點
+            group.forEach(n => processedInThisRun.add(n));
+
+            const merged = group.map(n => n.textContent).join('') // 保持原樣，不 trim 各部分
+                .replace(/\s+/g, ' ').trim(); // 最後整體清理空格
 
             const exactTrans = spanDict.findExact(merged);
             const fuzzyTrans = exactTrans ? null : spanDict.findFuzzy(merged);
@@ -603,23 +686,19 @@ const DOMTranslator = {
                     if (idx === 0) {
                         n.textContent = translated;
                     } else {
-                        n.textContent = '';
+                        n.textContent = ''; // 清空其他 span 的內容
                     }
-                    n.setAttribute(this.translatedAttribute, 'true'); // 添加標記
-                    processed.add(n); // 標記為已處理
+                    n.setAttribute(this.translatedAttribute, 'true'); // 為成功翻譯的組打上標記
                 });
-            } else {
-                // 如果沒有翻譯成功，也將這些節點標記為 processed，避免在同一次 mergeAdjacentSpanNodes 調用中重複嘗試合併它們
-                group.forEach(n => processed.add(n));
             }
+            // 注意：即使沒有翻譯成功，processedInThisRun 也已經包含了 group 中的節點，
+            // 所以它們在本輪 mergeAdjacentSpanNodes 的後續循環中不會被重新用作新 group 的開頭。
+            // data-translated 標記則用於跨越多個翻譯周期的持久化。
         }
     }
 };
 
-
-
-// 網站特定處理
-function handleAronaSite() {
+function handleAronaSite() { // ... (handleAronaSite 保持不變) ...
 	if (window.location.hostname === "arona.ai") {
 		const meta = document.createElement("meta");
 		meta.name = "google";
@@ -634,8 +713,7 @@ function handleAronaSite() {
 	}
 }
 
-// 輔助函數
-function debounce(func, delay) {
+function debounce(func, delay) { // ... (debounce 保持不變) ...
 	let timeout;
 	return function (...args) {
 		const context = this;
@@ -644,38 +722,24 @@ function debounce(func, delay) {
 	};
 }
 
-
-// 初始化和消息處理
-async function initialize() {
-	// 處理 arona.ai 站點特定邏輯
+async function initialize() { // ... (initialize 保持不變，除了 spanDict 初始化位置) ...
 	handleAronaSite();
-
-	// 載入配置
 	await Config.load();
-
-	// 初始化翻譯工作器
 	await WorkerManager.init();
-
-	// 載入字典
 	await Dictionary.loadLanguage(Config.current.language);
 
-	if (spanDict) 
-	{
+    // spanDict 初始化移到這裡，確保 Dictionary.data 和 Config.current 已載入
+	if (spanDict) {
 		spanDict.updateConfig(Dictionary.data, Config.current.fuzzyMatchThreshold);
-	}
-	else
-	{
+	} else {
 		spanDict = new SpanDictionary(
 			Dictionary.data,
 			Config.current.fuzzyMatchThreshold
 		);
-
 	}
 
-	// 初始化 DOM 翻譯器
 	DOMTranslator.init();
 
-	// 如果啟用了翻譯，立即開始翻譯
 	if (Config.current.translationEnabled) {
 		DOMTranslator.translatePage();
 	}
@@ -683,49 +747,53 @@ async function initialize() {
 	browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
 		if (request.action === 'clearCache') {
 			const req = indexedDB.deleteDatabase('translation_cache');
-			req.onsuccess = () => sendResponse({ success: true });
+			req.onsuccess = () => {
+                if (spanDict && spanDict.data) { // 清理内存中的 spanDict.data
+                    spanDict.updateConfig({}, Config.current.fuzzyMatchThreshold);
+                }
+                Dictionary.data = {}; // 清理内存中的 Dictionary.data
+                Dictionary.sortedEntries = [];
+                Dictionary.compiledPatterns = [];
+                Dictionary.loadedFiles = [];
+                sendResponse({ success: true });
+            };
 			req.onerror = () => sendResponse({ success: false });
-			return true; // 告訴 Chrome：我會 async 呼叫 sendResponse
+			return true;
 		}
 
-		// 其餘需要 await 的邏輯，就用 IIFE 包起來
 		(async () => {
 			if (request.action === 'enableTranslation') {
 				await Config.save('translationEnabled', true);
+                if (!DOMTranslator.observer) DOMTranslator.init(); // 確保 observer 已初始化
 				DOMTranslator.translatePage();
 			} else if (request.action === 'disableTranslation') {
 				await Config.save('translationEnabled', false);
-				location.reload();
+                if (DOMTranslator.observer) {
+                    DOMTranslator.observer.disconnect();
+                    DOMTranslator.observer = null; // 釋放 observer
+                }
+				location.reload(); // 重載以清除已翻譯內容和狀態
 			} else if (request.action === 'toggleDebugMode') {
-				await Config.save('debugMode', request.debugMode);
-				console.log(
-					Config.current.debugMode
-						? 'Debug Mode is ON.'
-						: 'Debug Mode is OFF.'
-				);
+				await Config.save('debugMode', !Config.current.debugMode); // 直接切換狀態
+				console.log(Config.current.debugMode ? 'Debug Mode is ON.' : 'Debug Mode is OFF.');
 			} else if (request.action === 'setLanguage') {
 				await Config.save('language', request.language);
-				location.reload();
+				location.reload(); // 重新載入以應用新語言
 			}
-			// 這些分支都不用回 sendResponse，所以不需要 return true
 		})();
 	});
 
-	// DOM 加載完成後檢查並翻譯
 	document.addEventListener('DOMContentLoaded', () => {
-		if (Config.current.translationEnabled) {
+		if (Config.current.translationEnabled && !DOMTranslator.isTranslating) { // 避免在 initialize 中的 translatePage 未完成時重複調用
 			DOMTranslator.translatePage();
 		}
 	});
 }
 
-
-class SpanDictionary {
+class SpanDictionary { // ... (SpanDictionary class 保持不變) ...
 	constructor(entries = {}, fuzzyMatchThreshold = 0.95) {
-		// 你原本用了 this.entries，但之後又用 this.data，這裡統一用 this.data
 		this.data = entries;
 		this.fuzzyMatchThreshold = fuzzyMatchThreshold;
-
 		this.sortedEntries = Object.entries(this.data)
 			.sort(([keyA], [keyB]) => keyB.length - keyA.length);
 	}
@@ -801,5 +869,8 @@ class SpanDictionary {
 	}
 }
 
-
+// 啟動初始化
 initialize();
+
+// 全域的 spanDict 初始化已移至 initialize 函數內部，以確保 Dictionary.data 已載入
+// const spanDict = new SpanDictionary(...); // 這一行應該已被移除
