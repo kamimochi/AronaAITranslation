@@ -1,10 +1,9 @@
-// content.js - 修改版
 
 if (typeof browser === 'undefined' || !browser) {
 	var browser = chrome;
 }
 
-// spanDict 會在 initialize 中被正確初始化
+
 let spanDict;
 let _skipInitialMutations = true;
 const Config = { // ... (Config 物件保持不變) ...
@@ -240,7 +239,7 @@ const Dictionary = { // ... (Dictionary 物件保持不變，確保它能正確�
 	}
 };
 
-const WorkerManager = { // ... (WorkerManager 物件保持不變) ...
+const WorkerManager = { 
 	worker: null,
 	isReady: false,
 	pendingRequests: new Map(),
@@ -274,8 +273,6 @@ const WorkerManager = { // ... (WorkerManager 物件保持不變) ...
 
 			this.worker.onerror = err => {
 				console.error('Worker error:', err);
-				// 可以考慮更穩健的重試機制或錯誤回饋
-				// setTimeout(() => this.init(), 5000); // 避免無限重試
 			};
 
 
@@ -284,7 +281,7 @@ const WorkerManager = { // ... (WorkerManager 物件保持不變) ...
 
 			return new Promise((resolve, reject) => {
 				let retries = 0;
-				const maxRetries = 10; // 最多重試10次 (共1秒)
+				const maxRetries = 10; 
 				const checkReady = setInterval(() => {
 					if (this.isReady) {
 						clearInterval(checkReady);
